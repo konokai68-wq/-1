@@ -1,7 +1,7 @@
 import "./style.css";
 import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
-import { ASPECTS, BACKDROPS, drawFrame, type Style } from "./render";
+import { ASPECTS, BACKDROPS, drawFrame, type Backdrop, type Style } from "./render";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
 
@@ -33,6 +33,13 @@ const setInBtn = $<HTMLButtonElement>("setIn");
 const setOutBtn = $<HTMLButtonElement>("setOut");
 const resetTrimBtn = $<HTMLButtonElement>("resetTrim");
 const swatches = $("swatches");
+const solidColor = $<HTMLInputElement>("solidColor");
+const solidPick = $("solidPick");
+const imagePick = $("imagePick");
+const imageThumb = $("imageThumb");
+const bgFile = $<HTMLInputElement>("bgFile");
+const blurRow = $("blurRow");
+const bgBlur = $<HTMLInputElement>("bgBlur");
 const aspectSelect = $<HTMLSelectElement>("aspect");
 const toast = $("toast");
 
@@ -70,14 +77,53 @@ for (const b of BACKDROPS) {
   el.setAttribute("aria-label", b.name);
   el.style.background = `linear-gradient(135deg, ${b.stops.join(", ")})`;
   el.setAttribute("aria-checked", String(b === style.backdrop));
-  el.addEventListener("click", () => {
-    style.backdrop = b;
-    swatches.querySelectorAll(".swatch").forEach((s) => s.setAttribute("aria-checked", String(s === el)));
-  });
+  el.addEventListener("click", () => setBackdrop(b, el));
   swatches.append(el);
 }
 swatches.setAttribute("role", "radiogroup");
 swatches.setAttribute("aria-label", "Backdrop");
+
+/** Make `b` the active backdrop and mark `picked` as the selected control. */
+function setBackdrop(b: Backdrop, picked: Element) {
+  style.backdrop = b;
+  swatches.querySelectorAll(".swatch").forEach((s) => s.setAttribute("aria-checked", String(s === picked)));
+  for (const p of [solidPick, imagePick]) p.classList.toggle("picked", p === picked);
+  // ctx.filter is missing in some browsers; only offer blur where it works.
+  blurRow.hidden = b.kind !== "image" || !("filter" in ctx);
+}
+
+bgBlur.addEventListener("input", () => {
+  if (style.backdrop.kind === "image") style.backdrop.blur = Number(bgBlur.value);
+});
+
+solidColor.addEventListener("input", () => setBackdrop({ kind: "solid", color: solidColor.value }, solidPick));
+solidColor.addEventListener("click", () => setBackdrop({ kind: "solid", color: solidColor.value }, solidPick));
+
+let backdropUrl: string | null = null;
+async function useBackdropImage(file: Blob) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  try {
+    await img.decode();
+  } catch {
+    URL.revokeObjectURL(url);
+    notify("Could not read that image. Try a PNG, JPEG or WebP file.");
+    return;
+  }
+  if (backdropUrl) URL.revokeObjectURL(backdropUrl);
+  backdropUrl = url;
+  imageThumb.style.backgroundImage = `url("${url}")`;
+  setBackdrop(
+    { kind: "image", image: img, size: { width: img.naturalWidth, height: img.naturalHeight }, blur: Number(bgBlur.value) },
+    imagePick,
+  );
+}
+bgFile.addEventListener("change", () => {
+  const f = bgFile.files?.[0];
+  if (f) void useBackdropImage(f);
+  bgFile.value = "";
+});
 
 for (const a of ASPECTS) aspectSelect.add(new Option(a.label, a.id));
 aspectSelect.addEventListener("change", () => {
@@ -124,9 +170,12 @@ canvasWrap.addEventListener("dragleave", () => canvasWrap.classList.remove("drag
 canvasWrap.addEventListener("drop", (e) => {
   e.preventDefault();
   canvasWrap.classList.remove("dragging");
-  const f = [...(e.dataTransfer?.files ?? [])].find((x) => x.type.startsWith("video/"));
+  const files = [...(e.dataTransfer?.files ?? [])];
+  const f = files.find((x) => x.type.startsWith("video/"));
+  const img = files.find((x) => x.type.startsWith("image/"));
   if (f) void open(f);
-  else notify("That file is not a video. Drop a WebM or MP4 file.");
+  else if (img) void useBackdropImage(img);
+  else notify("Drop a video (WebM or MP4) to edit, or an image to use as the backdrop.");
 });
 
 recordBtn.addEventListener("click", async () => {

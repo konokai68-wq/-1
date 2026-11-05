@@ -1,19 +1,35 @@
-import { cameraAt, fitFrame, sourceWindow, type Size, type ZoomSegment } from "./layout";
+import { cameraAt, coverRect, fitFrame, sourceWindow, type Size, type ZoomSegment } from "./layout";
 
-export interface Backdrop {
+export interface GradientBackdrop {
+  kind: "gradient";
   id: string;
   name: string;
   /** Two or more colour stops, drawn diagonally from top-left. */
   stops: string[];
 }
 
-export const BACKDROPS: Backdrop[] = [
-  { id: "harbor", name: "Harbor", stops: ["#2443d6", "#6fc3ea"] },
-  { id: "dusk", name: "Dusk", stops: ["#3d2470", "#c2577f", "#f39a6b"] },
-  { id: "moss", name: "Moss", stops: ["#173f33", "#4f8a5b", "#cfe08a"] },
-  { id: "sunbeam", name: "Sunbeam", stops: ["#f7c948", "#f0743e"] },
-  { id: "graphite", name: "Graphite", stops: ["#252a33", "#5b6574"] },
-  { id: "paper", name: "Paper", stops: ["#f3f2ec", "#d5d9cf"] },
+export interface SolidBackdrop {
+  kind: "solid";
+  color: string;
+}
+
+export interface ImageBackdrop {
+  kind: "image";
+  image: CanvasImageSource;
+  size: Size;
+  /** Blur radius as a fraction of the canvas's shorter side (0 = sharp). */
+  blur: number;
+}
+
+export type Backdrop = GradientBackdrop | SolidBackdrop | ImageBackdrop;
+
+export const BACKDROPS: GradientBackdrop[] = [
+  { kind: "gradient", id: "harbor", name: "Harbor", stops: ["#2443d6", "#6fc3ea"] },
+  { kind: "gradient", id: "dusk", name: "Dusk", stops: ["#3d2470", "#c2577f", "#f39a6b"] },
+  { kind: "gradient", id: "moss", name: "Moss", stops: ["#173f33", "#4f8a5b", "#cfe08a"] },
+  { kind: "gradient", id: "sunbeam", name: "Sunbeam", stops: ["#f7c948", "#f0743e"] },
+  { kind: "gradient", id: "graphite", name: "Graphite", stops: ["#252a33", "#5b6574"] },
+  { kind: "gradient", id: "paper", name: "Paper", stops: ["#f3f2ec", "#d5d9cf"] },
 ];
 
 export interface Aspect {
@@ -78,6 +94,21 @@ export function drawFrame(
 }
 
 function paintBackdrop(ctx: CanvasRenderingContext2D, b: Backdrop, w: number, h: number): void {
+  if (b.kind === "solid") {
+    ctx.fillStyle = b.color;
+    ctx.fillRect(0, 0, w, h);
+    return;
+  }
+  if (b.kind === "image") {
+    const blur = b.blur * Math.min(w, h);
+    // Overscan when blurring so soft edges don't fade to transparent.
+    const r = coverRect({ width: w + blur * 4, height: h + blur * 4 }, b.size);
+    ctx.save();
+    if (blur > 0) ctx.filter = `blur(${blur}px)`;
+    ctx.drawImage(b.image, r.x - blur * 2, r.y - blur * 2, r.width, r.height);
+    ctx.restore();
+    return;
+  }
   const g = ctx.createLinearGradient(0, 0, w, h);
   b.stops.forEach((c, i) => g.addColorStop(b.stops.length === 1 ? 0 : i / (b.stops.length - 1), c));
   ctx.fillStyle = g;

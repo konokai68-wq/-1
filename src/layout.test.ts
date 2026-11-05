@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraAt, easeInOut, fitFrame, sourceWindow, ZOOM_RAMP } from "./layout";
+import { cameraAt, coverRect, easeInOut, fitFrame, sourceWindow, ZOOM_RAMP } from "./layout";
 
 describe("fitFrame", () => {
   it("centers a 16:9 video inside a 16:9 canvas with padding", () => {
@@ -78,5 +78,27 @@ describe("easeInOut", () => {
     expect(easeInOut(0)).toBe(0);
     expect(easeInOut(1)).toBe(1);
     expect(easeInOut(0.5)).toBeCloseTo(0.5);
+  });
+});
+
+describe("coverRect", () => {
+  it("fills a wide canvas with a square image by cropping top and bottom", () => {
+    const r = coverRect({ width: 1920, height: 1080 }, { width: 1000, height: 1000 });
+    expect(r.width).toBeCloseTo(1920);
+    expect(r.height).toBeCloseTo(1920);
+    expect(r.x).toBeCloseTo(0);
+    expect(r.y).toBeCloseTo(-420);
+  });
+
+  it("fills a tall canvas with a wide image by cropping the sides", () => {
+    const r = coverRect({ width: 1080, height: 1920 }, { width: 1600, height: 900 });
+    expect(r.height).toBeCloseTo(1920);
+    expect(r.width).toBeCloseTo(3413.33, 1);
+    expect(r.x).toBeCloseTo((1080 - 3413.33) / 2, 1);
+    expect(r.y).toBeCloseTo(0);
+  });
+
+  it("falls back to the full canvas for an empty image", () => {
+    expect(coverRect({ width: 100, height: 50 }, { width: 0, height: 0 })).toEqual({ x: 0, y: 0, width: 100, height: 50 });
   });
 });

@@ -49,6 +49,18 @@
         <fieldset>
           <legend>Backdrop</legend>
           <div class="swatches" id="swatches"></div>
+          <div class="backdrop-custom">
+            <label class="custom-pick" id="solidPick" title="Solid colour">
+              <input id="solidColor" type="color" value="#0f1115" aria-label="Solid backdrop colour" />
+              <span>Colour</span>
+            </label>
+            <label class="custom-pick" id="imagePick" title="Use your own image">
+              <span class="custom-thumb" id="imageThumb" aria-hidden="true"></span>
+              <span>Image…</span>
+              <input id="bgFile" type="file" accept="image/*" hidden />
+            </label>
+          </div>
+          <label class="slider" id="blurRow" hidden>Blur <input id="bgBlur" type="range" min="0" max="0.04" step="0.001" value="0" /></label>
         </fieldset>
         <fieldset>
           <legend>Canvas</legend>

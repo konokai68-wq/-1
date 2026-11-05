@@ -90,6 +90,18 @@ export function sourceWindow(video: Size, cam: Camera): Rect {
   return { x, y, width, height };
 }
 
+/**
+ * Scale and center `image` so it covers the whole `canvas` (like CSS
+ * `object-fit: cover`). Parts of the image may fall outside the canvas.
+ */
+export function coverRect(canvas: Size, image: Size): Rect {
+  if (image.width <= 0 || image.height <= 0) return { x: 0, y: 0, width: canvas.width, height: canvas.height };
+  const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  return { x: (canvas.width - width) / 2, y: (canvas.height - height) / 2, width, height };
+}
+
 export function easeInOut(x: number): number {
   const t = clamp(x, 0, 1);
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
