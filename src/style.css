@@ -109,12 +109,31 @@ button, select, input, label.btn { font: inherit; color: inherit; }
 }
 .icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .time { font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--ink-soft); white-space: nowrap; }
-.track { position: relative; flex: 1; height: 34px; }
-.zooms { position: absolute; inset: 4px 0 auto; height: 8px; }
+.track { position: relative; flex: 1; height: 40px; }
+.zooms { position: absolute; inset: 2px 0 auto; height: 14px; touch-action: none; }
 .zooms span {
-  position: absolute; top: 0; height: 8px; border-radius: 3px; background: var(--zoom);
+  position: absolute; top: 0; height: 14px; border-radius: 4px; background: var(--zoom);
 }
 .zooms span.active { outline: 2px solid var(--ink); }
+/* Edge grips: wider than they look, so they are easy to grab. */
+.zooms .grip {
+  position: absolute; top: -3px; bottom: -3px; width: 14px; cursor: ew-resize;
+}
+.zooms .grip::after {
+  content: ""; position: absolute; top: 5px; bottom: 5px; left: 6px; width: 2px;
+  border-radius: 1px; background: rgba(42, 26, 0, 0.55);
+}
+.zooms .grip[data-edge="start"] { left: -5px; }
+.zooms .grip[data-edge="end"] { right: -5px; }
+.zooms.dragging, .zooms.dragging .grip { cursor: ew-resize; }
+.trim-shade { position: absolute; inset: 0; pointer-events: none; }
+.trim-shade span {
+  position: absolute; top: 0; bottom: 0;
+  background: repeating-linear-gradient(-45deg, rgba(24, 32, 44, 0.16) 0 4px, transparent 4px 8px);
+}
+.trim-shade #cutBefore { left: 0; border-right: 2px solid var(--cue); }
+.trim-shade #cutAfter { right: 0; border-left: 2px solid var(--cue); }
+.trim-shade span[style*="width: 0%"] { border: 0; }
 #scrub { position: absolute; left: 0; right: 0; bottom: 2px; width: 100%; accent-color: var(--cue); margin: 0; }
 
 /* Inspector */
@@ -144,11 +163,19 @@ select {
 .zoom-list button { border: 0; background: none; cursor: pointer; color: var(--ink-soft); padding: 2px 4px; }
 .zoom-list button:hover { color: var(--ink); }
 .zoom-list select { padding: 2px 4px; font-size: 0.8125rem; }
+.trim-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.875rem; color: var(--ink-soft); }
+.trim-row b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; margin-left: 4px; }
+kbd {
+  font: inherit; font-size: 0.75rem; padding: 0 5px; border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 4px; color: var(--ink);
+}
+.link-btn { border: 0; background: none; padding: 0; color: var(--cue); cursor: pointer; text-decoration: underline; font-size: inherit; }
 .note, .privacy { font-size: 0.8125rem; color: var(--ink-soft); margin: 0; line-height: 1.45; }
 .privacy { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
 
 .toast {
-  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  /* Top of the window, so it never covers the timeline; clicks pass through. */
+  position: fixed; top: 64px; left: 50%; transform: translateX(-50%); pointer-events: none;
   background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 8px;
   font-size: 0.875rem; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-width: calc(100vw - 32px);
 }

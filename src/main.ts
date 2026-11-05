@@ -2,7 +2,8 @@ import "./style.css";
 import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { ASPECTS, BACKDROPS, drawFrame, type Style } from "./render";
-import { addZoom, formatTime, zoomIndexAt } from "./zooms";
+import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
+import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -23,12 +24,21 @@ const addZoomBtn = $<HTMLButtonElement>("addZoom");
 const zoomLane = $("zoomLane");
 const zoomList = $<HTMLUListElement>("zoomList");
 const zoomEmpty = $("zoomEmpty");
+const zoomTip = $("zoomTip");
+const cutBefore = $("cutBefore");
+const cutAfter = $("cutAfter");
+const trimStartLabel = $("trimStart");
+const trimEndLabel = $("trimEnd");
+const setInBtn = $<HTMLButtonElement>("setIn");
+const setOutBtn = $<HTMLButtonElement>("setOut");
+const resetTrimBtn = $<HTMLButtonElement>("resetTrim");
 const swatches = $("swatches");
 const aspectSelect = $<HTMLSelectElement>("aspect");
 const toast = $("toast");
 
 const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
 let zooms: ZoomSegment[] = [];
+let trim: Trim = fullTrim(0);
 let hasVideo = false;
 let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
@@ -89,9 +99,11 @@ async function open(blob: Blob) {
     await loadVideo(video, blob);
     hasVideo = true;
     zooms = [];
+    trim = fullTrim(video.duration);
     empty.hidden = true;
-    for (const el of [exportBtn, playBtn, scrub, addZoomBtn]) el.disabled = false;
+    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
+    renderTrimUi();
     notify(`Loaded a ${formatTime(video.duration)} clip. Add zooms, pick a backdrop, then export.`);
   } catch (err) {
     notify((err as Error).message);
@@ -146,14 +158,25 @@ function setRecording(on: boolean) {
 
 // ---- Transport ---------------------------------------------------------------
 
-playBtn.addEventListener("click", () => (video.paused ? void video.play() : video.pause()));
+playBtn.addEventListener("click", () => {
+  if (!video.paused) return video.pause();
+  video.currentTime = playStart(trim, video.currentTime);
+  void video.play();
+});
 scrub.addEventListener("input", () => {
   if (video.duration) video.currentTime = (Number(scrub.value) / 1000) * video.duration;
 });
 document.addEventListener("keydown", (e) => {
-  if (e.code === "Space" && hasVideo && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLButtonElement)) {
+  if (!hasVideo || exporting || e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t instanceof HTMLSelectElement || (t instanceof HTMLInputElement && t.type !== "range")) return;
+  if (e.code === "Space" && !(t instanceof HTMLInputElement || t instanceof HTMLButtonElement)) {
     e.preventDefault();
     playBtn.click();
+  } else if (e.key === "i" || e.key === "I") {
+    setTrim("start");
+  } else if (e.key === "o" || e.key === "O") {
+    setTrim("end");
   }
 });
 
@@ -164,11 +187,41 @@ function syncTransport() {
   timeLabel.textContent = `${formatTime(video.currentTime)} / ${formatTime(d)}`;
   playIcon.setAttribute("d", video.paused ? "M6 4l10 6-10 6z" : "M5 4h3.5v12H5zM11.5 4H15v12h-3.5z");
   playBtn.setAttribute("aria-label", video.paused ? "Play" : "Pause");
+  // Stop at the trim end during normal playback (export handles its own range).
+  if (!exporting && !video.paused && video.currentTime >= trim.end) {
+    video.pause();
+    video.currentTime = trim.end;
+  }
   const active = zoomIndexAt(zooms, video.currentTime);
   if (active !== lastActive) {
     lastActive = active;
     renderZoomUi();
   }
+}
+
+// ---- Trim --------------------------------------------------------------------
+
+function setTrim(edge: Edge) {
+  trim = setTrimEdge(trim, edge, video.currentTime, video.duration);
+  renderTrimUi();
+  notify(edge === "start" ? `Clip now starts at ${formatTimeFine(trim.start)}.` : `Clip now ends at ${formatTimeFine(trim.end)}.`);
+}
+
+setInBtn.addEventListener("click", () => setTrim("start"));
+setOutBtn.addEventListener("click", () => setTrim("end"));
+resetTrimBtn.addEventListener("click", () => {
+  trim = fullTrim(video.duration);
+  renderTrimUi();
+  notify("Keeping the whole clip.");
+});
+
+function renderTrimUi() {
+  const d = video.duration || 1;
+  cutBefore.style.width = `${(trim.start / d) * 100}%`;
+  cutAfter.style.width = `${((d - trim.end) / d) * 100}%`;
+  trimStartLabel.textContent = formatTimeFine(trim.start);
+  trimEndLabel.textContent = formatTimeFine(trim.end);
+  resetTrimBtn.hidden = isFullTrim(trim, video.duration);
 }
 
 // ---- Zooms -------------------------------------------------------------------
@@ -194,6 +247,42 @@ canvas.addEventListener("click", (e) => {
   notify("Zoom aimed.");
 });
 
+// Drag a zoom's edge on the timeline to change its length. The pointer is
+// captured by the lane (which is never re-created), so re-rendering the bars
+// mid-drag is safe.
+let drag: { index: number; edge: Edge; pointerId: number } | null = null;
+
+zoomLane.addEventListener("pointerdown", (e) => {
+  const grip = (e.target as HTMLElement).closest<HTMLElement>(".grip");
+  if (!grip || !hasVideo || exporting) return;
+  e.preventDefault();
+  video.pause();
+  drag = { index: Number(grip.dataset.index), edge: grip.dataset.edge as Edge, pointerId: e.pointerId };
+  zoomLane.setPointerCapture(e.pointerId);
+  zoomLane.classList.add("dragging");
+});
+
+zoomLane.addEventListener("pointermove", (e) => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  const rect = zoomLane.getBoundingClientRect();
+  const t = clamp01((e.clientX - rect.left) / rect.width) * video.duration;
+  zooms = resizeZoom(zooms, drag.index, drag.edge, t, video.duration);
+  const z = zooms[drag.index];
+  // Show the frame at the edge being moved, just inside the zoom.
+  video.currentTime = drag.edge === "start" ? z.start : Math.max(z.start, z.end - 0.05);
+  renderZoomUi();
+});
+
+const endDrag = (e: PointerEvent) => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  const z = zooms[drag.index];
+  drag = null;
+  zoomLane.classList.remove("dragging");
+  if (z) notify(`Zoom now runs ${formatTimeFine(z.start)}–${formatTimeFine(z.end)}.`);
+};
+zoomLane.addEventListener("pointerup", endDrag);
+zoomLane.addEventListener("pointercancel", endDrag);
+
 function renderZoomUi() {
   const d = video.duration || 1;
   const active = zoomIndexAt(zooms, video.currentTime);
@@ -202,7 +291,15 @@ function renderZoomUi() {
       const s = document.createElement("span");
       s.style.left = `${(z.start / d) * 100}%`;
       s.style.width = `${((z.end - z.start) / d) * 100}%`;
-      s.classList.toggle("active", i === active);
+      s.classList.toggle("active", i === active || drag?.index === i);
+      for (const edge of ["start", "end"] as const) {
+        const g = document.createElement("i");
+        g.className = "grip";
+        g.dataset.edge = edge;
+        g.dataset.index = String(i);
+        g.title = edge === "start" ? "Drag to change where this zoom starts" : "Drag to change where this zoom ends";
+        s.append(g);
+      }
       return s;
     }),
   );
@@ -231,6 +328,7 @@ function renderZoomUi() {
     }),
   );
   zoomEmpty.hidden = zooms.length > 0;
+  zoomTip.hidden = zooms.length === 0;
   focusHint.hidden = active < 0;
   canvas.classList.toggle("aiming", active >= 0);
 }
@@ -243,7 +341,7 @@ exportBtn.addEventListener("click", async () => {
     return;
   }
   exportBtn.textContent = "Cancel export";
-  exporting = exportCanvas(canvas, video, render, (f) => notify(`Exporting… ${Math.round(f * 100)}%. Keep this tab open.`, true));
+  exporting = exportCanvas(canvas, video, trim, render, (f) => notify(`Exporting… ${Math.round(f * 100)}%. Keep this tab open.`, true));
   const blob = await exporting.done;
   exporting = null;
   exportBtn.textContent = "Export video";
