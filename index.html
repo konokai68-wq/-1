@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Turn raw screen recordings into polished demo videos. Free, open source, and everything stays in your browser." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='6' width='26' height='20' rx='5' fill='%233150e8'/%3E%3Crect x='9' y='11' width='14' height='10' rx='2' fill='%23fff'/%3E%3C/svg%3E" />
+    <title>Panreel</title>
+  </head>
+  <body>
+    <header class="bar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="wordmark">Panreel</span>
+        <span class="tagline">Polish screen recordings. Nothing leaves your browser.</span>
+      </div>
+      <div class="actions">
+        <button id="record" class="btn btn-record" type="button"><span class="dot" aria-hidden="true"></span><span class="label">Record screen</span></button>
+        <label class="btn">Open video<input id="file" type="file" accept="video/*" hidden /></label>
+        <button id="export" class="btn btn-primary" type="button" disabled>Export video</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="stage" id="stage" aria-label="Preview">
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="canvas" width="1920" height="1080" aria-label="Video preview"></canvas>
+          <div class="empty" id="empty">
+            <p class="empty-title">Drop a screen recording here</p>
+            <p class="empty-sub">or record your screen, a window or a tab. WebM and MP4 work.</p>
+          </div>
+          <div class="focus-hint" id="focusHint" hidden>Click the preview to aim the zoom</div>
+        </div>
+        <div class="transport">
+          <button id="play" class="icon-btn" type="button" aria-label="Play" disabled>
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path id="playIcon" d="M6 4l10 6-10 6z" fill="currentColor"/></svg>
+          </button>
+          <span class="time" id="time">0:00 / 0:00</span>
+          <div class="track" id="track">
+            <div class="zooms" id="zoomLane"></div>
+            <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Playhead" disabled />
+          </div>
+          <button id="addZoom" class="btn btn-small" type="button" disabled>Add zoom here</button>
+        </div>
+      </section>
+
+      <aside class="inspector" aria-label="Style">
+        <fieldset>
+          <legend>Backdrop</legend>
+          <div class="swatches" id="swatches"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Canvas</legend>
+          <select id="aspect" aria-label="Canvas size"></select>
+        </fieldset>
+        <fieldset>
+          <legend>Frame</legend>
+          <label class="slider">Padding <input id="padding" type="range" min="0" max="0.3" step="0.005" value="0.08" /></label>
+          <label class="slider">Corners <input id="radius" type="range" min="0" max="0.08" step="0.002" value="0.025" /></label>
+          <label class="slider">Shadow <input id="shadow" type="range" min="0" max="1" step="0.01" value="0.6" /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Zooms</legend>
+          <ul class="zoom-list" id="zoomList"></ul>
+          <p class="note" id="zoomEmpty">Move the playhead to a moment worth a closer look, then press Add zoom here.</p>
+        </fieldset>
+        <p class="privacy">Your video is processed on this device. Panreel has no server and no account.</p>
+      </aside>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <video id="video" playsinline hidden></video>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

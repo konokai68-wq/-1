@@ -1,0 +1,158 @@
+/** Browser media helpers: screen capture, loading and exporting video. */
+
+export function pickMimeType(): string {
+  const candidates = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4",
+  ];
+  return candidates.find((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) ?? "";
+}
+
+export interface Recording {
+  stop(): void;
+  done: Promise<Blob>;
+}
+
+/** Ask the browser for a screen, window or tab and record it until stopped. */
+export async function recordScreen(withAudio: boolean): Promise<Recording> {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: 60 },
+    audio: withAudio,
+  });
+  const mimeType = pickMimeType();
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 12_000_000 } : undefined);
+  const chunks: Blob[] = [];
+  recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  const done = new Promise<Blob>((resolve) => {
+    recorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
+    };
+  });
+  // The user can also end sharing from the browser's own UI.
+  stream.getVideoTracks()[0]?.addEventListener("ended", () => recorder.state !== "inactive" && recorder.stop());
+  recorder.start(1000);
+  return { stop: () => recorder.state !== "inactive" && recorder.stop(), done };
+}
+
+/**
+ * Load a blob into a <video> element and wait until its size and duration are
+ * known. Recordings from MediaRecorder often report an infinite duration until
+ * the browser has scanned the whole file, so we force that scan.
+ */
+export async function loadVideo(video: HTMLVideoElement, blob: Blob): Promise<void> {
+  if (video.src.startsWith("blob:")) URL.revokeObjectURL(video.src);
+  video.src = URL.createObjectURL(blob);
+  video.muted = false;
+  await once(video, "loadedmetadata");
+  if (!Number.isFinite(video.duration)) {
+    video.currentTime = Number.MAX_SAFE_INTEGER;
+    await once(video, "durationchange");
+    video.currentTime = 0;
+    await once(video, "seeked");
+  }
+}
+
+function once(el: EventTarget, type: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const ok = () => (cleanup(), resolve());
+    const fail = () => (cleanup(), reject(new Error("This video could not be opened. Try a WebM or MP4 file.")));
+    const cleanup = () => {
+      el.removeEventListener(type, ok);
+      el.removeEventListener("error", fail);
+    };
+    el.addEventListener(type, ok);
+    el.addEventListener("error", fail);
+  });
+}
+
+export interface ExportJob {
+  cancel(): void;
+  done: Promise<Blob | null>;
+}
+
+/**
+ * Play the video from the start and record the styled canvas in real time.
+ * `onFrame` must redraw the canvas; it is called on every animation frame.
+ */
+export function exportCanvas(
+  canvas: HTMLCanvasElement,
+  video: HTMLVideoElement,
+  onFrame: () => void,
+  onProgress: (fraction: number) => void,
+): ExportJob {
+  const stream = canvas.captureStream(60);
+  const audio = captureAudio(video);
+  audio?.getAudioTracks().forEach((t) => stream.addTrack(t));
+
+  const mimeType = pickMimeType();
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 16_000_000 } : undefined);
+  const chunks: Blob[] = [];
+  recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  let cancelled = false;
+  let raf = 0;
+
+  const done = new Promise<Blob | null>((resolve) => {
+    recorder.onstop = () => {
+      cancelAnimationFrame(raf);
+      video.pause();
+      resolve(cancelled ? null : new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
+    };
+  });
+
+  const tick = () => {
+    onFrame();
+    onProgress(video.duration ? video.currentTime / video.duration : 0);
+    if (video.ended) recorder.state !== "inactive" && recorder.stop();
+    else raf = requestAnimationFrame(tick);
+  };
+
+  video.pause();
+  video.currentTime = 0;
+  video.addEventListener(
+    "seeked",
+    () => {
+      recorder.start(1000);
+      void video.play();
+      tick();
+    },
+    { once: true },
+  );
+
+  return {
+    cancel: () => {
+      cancelled = true;
+      if (recorder.state !== "inactive") recorder.stop();
+    },
+    done,
+  };
+}
+
+const audioGraphs = new WeakMap<HTMLVideoElement, MediaStream>();
+
+/** Route a video's sound into a stream, keeping it audible in the page. */
+function captureAudio(video: HTMLVideoElement): MediaStream | null {
+  const cached = audioGraphs.get(video);
+  if (cached) return cached;
+  try {
+    const ctx = new AudioContext();
+    const src = ctx.createMediaElementSource(video);
+    const dest = ctx.createMediaStreamDestination();
+    src.connect(dest);
+    src.connect(ctx.destination);
+    audioGraphs.set(video, dest.stream);
+    return dest.stream;
+  } catch {
+    return null;
+  }
+}
+
+export function download(blob: Blob, name: string): void {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+}
