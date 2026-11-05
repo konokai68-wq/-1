@@ -14,7 +14,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Smooth zooms**: press *Add zoom here*, click the preview to aim it, choose 1.4×–3×. Zooms ease in and out automatically
 - **Trim** the start and end — set them to the playhead with a button or the <kbd>I</kbd> / <kbd>O</kbd> keys
 - **Resize zooms** by dragging the ends of their bars on the timeline
-- **Export** to WebM (rendered in real time; keep the tab open)
+- **Export** to MP4 (H.264) or WebM with WebCodecs: every frame is decoded, styled and re-encoded directly, so the result is frame-accurate and you don't have to watch it play. MP4 is used when your browser can encode H.264 (and AAC for the soundtrack); otherwise Panreel picks WebM so the audio is never dropped. Browsers without WebCodecs fall back to real-time WebM recording
 
 ## Use it
 
@@ -35,7 +35,11 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: fast MP4 export via WebCodecs, GIF export, and a webcam bubble.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: export resolution and frame-rate options, GIF export, and a webcam bubble.
+
+## Credits
+
+Encoding and muxing use [Mediabunny](https://github.com/Vanilagy/mediabunny) (MPL-2.0).
 
 ## Privacy
 

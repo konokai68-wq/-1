@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-05 22:00 JST — WebCodecs export (MP4)
+- Export now decodes, styles and re-encodes every frame with WebCodecs via Mediabunny (lazy-loaded chunk): MP4/H.264 when possible, WebM/VP9+Opus when the browser can't encode AAC, real-time WebM as the last fallback.
+- Checked in headless Chromium: silent clip → H.264 MP4 (4.0 s), trimmed clip with sound → VP9+Opus WebM (5.0 s of 1–6 s), zoom rendered. Tests: 37 passing.
+- In this 2-CPU sandbox (software encoder) a 1080p60 export runs ~3× slower than real time; hardware encoders on real machines should be much faster. Next: 30 fps / resolution options, GIF export.
+
 ## 2026-11-05 18:00 JST — custom backdrops (Phase 1 complete)
 - Added a solid colour picker and image backdrops (pick a file or drop an image on the canvas); images cover the canvas and can be blurred where `ctx.filter` is supported.
 - Tests: 31 passing (new `coverRect` cases); checked colour, image, blur and switching back in Chromium with Playwright.

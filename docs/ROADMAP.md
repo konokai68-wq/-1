@@ -16,7 +16,8 @@ Everything runs locally; no server, no account.
 - [x] Custom solid colour and image backdrops (with optional blur)
 
 ## Phase 2 — Quality output
-- [ ] Fast MP4 export with WebCodecs + an MP4 muxer (faster than real time)
+- [x] WebCodecs export: MP4/H.264 (WebM/VP9 fallback that keeps audio), frame-accurate, no real-time playback
+- [ ] Faster export: 30 fps option, render in a worker (OffscreenCanvas)
 - [ ] GIF export for short clips
 - [ ] Export resolution and frame-rate options
 - [ ] Undo / redo; keyboard shortcuts
