@@ -84,8 +84,9 @@ export function exportCanvas(
   range: { start: number; end: number },
   onFrame: () => void,
   onProgress: (fraction: number) => void,
+  frameRate = 60,
 ): ExportJob {
-  const stream = canvas.captureStream(60);
+  const stream = canvas.captureStream(frameRate);
   const audio = captureAudio(video);
   audio?.getAudioTracks().forEach((t) => stream.addTrack(t));
 

@@ -1,6 +1,7 @@
 import "./style.css";
 import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
+import { FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { ASPECTS, BACKDROPS, drawFrame, type Backdrop, type Style } from "./render";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
@@ -42,6 +43,9 @@ const blurRow = $("blurRow");
 const bgBlur = $<HTMLInputElement>("bgBlur");
 const aspectSelect = $<HTMLSelectElement>("aspect");
 const toast = $("toast");
+const resolutionGroup = $("resolution");
+const frameRateGroup = $("frameRate");
+const exportInfo = $("exportInfo");
 
 const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
 let zooms: ZoomSegment[] = [];
@@ -131,7 +135,68 @@ aspectSelect.addEventListener("change", () => {
   const a = ASPECTS.find((x) => x.id === aspectSelect.value)!;
   canvas.width = a.size.width;
   canvas.height = a.size.height;
+  updateExportInfo();
 });
+
+// ---- Export settings ---------------------------------------------------------
+
+const SETTINGS_KEY = "panreel.export";
+let settings: ExportSettings = sanitizeSettings(readSaved());
+
+function readSaved(): unknown {
+  try {
+    return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Private mode or blocked storage: the choice just won't be remembered.
+  }
+}
+
+function radio(group: HTMLElement, name: string, value: string, label: string, checked: boolean, onPick: () => void) {
+  const el = document.createElement("label");
+  const input = document.createElement("input");
+  input.type = "radio";
+  input.name = name;
+  input.value = value;
+  input.checked = checked;
+  input.addEventListener("change", onPick);
+  el.append(input, label);
+  group.append(el);
+}
+
+for (const r of RESOLUTIONS) {
+  radio(resolutionGroup, "resolution", r.id, r.label, r.id === settings.resolution, () => {
+    settings = { ...settings, resolution: r.id };
+    saveSettings();
+    updateExportInfo();
+  });
+}
+for (const fps of FRAME_RATES) {
+  radio(frameRateGroup, "frameRate", String(fps), `${fps} fps`, fps === settings.frameRate, () => {
+    settings = { ...settings, frameRate: fps };
+    saveSettings();
+    updateExportInfo();
+  });
+}
+
+/** Output size for the current canvas shape and chosen resolution. */
+function outputSize() {
+  return exportSize({ width: canvas.width, height: canvas.height }, resolutionById(settings.resolution).short);
+}
+
+function updateExportInfo() {
+  const s = outputSize();
+  const hint = settings.frameRate === 30 ? " Exports about twice as fast." : "";
+  exportInfo.textContent = `${s.width} × ${s.height} at ${settings.frameRate} fps.${hint}`;
+}
+updateExportInfo();
 
 for (const key of ["padding", "radius", "shadow"] as const) {
   const input = $<HTMLInputElement>(key);
@@ -400,10 +465,22 @@ exportBtn.addEventListener("click", async () => {
     console.warn("Fast export failed, falling back to real-time export.", err);
   }
   if (!result) {
-    exporting = exportCanvas(canvas, video, trim, render, (f) =>
-      notify(`Exporting in real time… ${Math.round(f * 100)}%. Keep this tab open.`, true),
+    // Record the preview canvas itself, temporarily resized to the export size.
+    const preview = { width: canvas.width, height: canvas.height };
+    const size = outputSize();
+    canvas.width = size.width;
+    canvas.height = size.height;
+    exporting = exportCanvas(
+      canvas,
+      video,
+      trim,
+      render,
+      (f) => notify(`Exporting in real time… ${Math.round(f * 100)}%. Keep this tab open.`, true),
+      settings.frameRate,
     );
     result = { blob: await exporting.done, ext: "webm" };
+    canvas.width = preview.width;
+    canvas.height = preview.height;
   }
   exporting = null;
   exportBtn.textContent = "Export video";
@@ -420,7 +497,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
   if (!sourceBlob) return null;
   // Loaded on demand so the encoder library doesn't slow down the first page load.
   const { detectFastExport, exportFast } = await import("./fastExport");
-  const size = { width: canvas.width, height: canvas.height };
+  const size = outputSize();
   const plan = await detectFastExport(sourceBlob, size);
   if (!plan) return null;
   const started = performance.now();
@@ -429,7 +506,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     size,
     plan,
     range: trim,
-    frameRate: 60,
+    frameRate: settings.frameRate,
     draw: (c, frame, frameSize, time) => drawFrame(c, frame, frameSize, style, zooms, time),
     onProgress: (f) => notify(`Exporting ${plan.container.toUpperCase()}… ${Math.round(f * 100)}%`, true),
   });
