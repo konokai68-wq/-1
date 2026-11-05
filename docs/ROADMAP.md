@@ -17,9 +17,10 @@ Everything runs locally; no server, no account.
 
 ## Phase 2 — Quality output
 - [x] WebCodecs export: MP4/H.264 (WebM/VP9 fallback that keeps audio), frame-accurate, no real-time playback
-- [ ] Faster export: 30 fps option, render in a worker (OffscreenCanvas)
+- [x] 30 fps export option
+- [ ] Faster export: render in a worker (OffscreenCanvas)
 - [ ] GIF export for short clips
-- [ ] Export resolution and frame-rate options
+- [x] Export resolution (720p / 1080p / 1440p / 4K) and frame-rate (30 / 60 fps) options
 - [ ] Undo / redo; keyboard shortcuts
 
 ## Phase 3 — Studio features

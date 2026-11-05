@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-06 09:00 JST — export resolution and frame rate
+- Added an Export section: 720p / 1080p / 1440p / 4K (by the canvas's shorter side, even dimensions) and 30 / 60 fps, remembered in localStorage. Used by both the WebCodecs path and the real-time fallback.
+- Checked in headless Chromium: 720p/30 fps → H.264 MP4 1280×720, 30 fps, 3.0 s; settings survive reload. Tests: 44 passing.
+- Next: GIF export for short clips, then undo / redo.
+
 ## 2026-11-05 22:00 JST — WebCodecs export (MP4)
 - Export now decodes, styles and re-encodes every frame with WebCodecs via Mediabunny (lazy-loaded chunk): MP4/H.264 when possible, WebM/VP9+Opus when the browser can't encode AAC, real-time WebM as the last fallback.
 - Checked in headless Chromium: silent clip → H.264 MP4 (4.0 s), trimmed clip with sound → VP9+Opus WebM (5.0 s of 1–6 s), zoom rendered. Tests: 37 passing.
