@@ -49,6 +49,7 @@ let trim: Trim = fullTrim(0);
 let hasVideo = false;
 let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
+let sourceBlob: Blob | null = null;
 
 // ---- Rendering -------------------------------------------------------------
 
@@ -143,6 +144,7 @@ for (const key of ["padding", "radius", "shadow"] as const) {
 async function open(blob: Blob) {
   try {
     await loadVideo(video, blob);
+    sourceBlob = blob;
     hasVideo = true;
     zooms = [];
     trim = fullTrim(video.duration);
@@ -390,17 +392,52 @@ exportBtn.addEventListener("click", async () => {
     return;
   }
   exportBtn.textContent = "Cancel export";
-  exporting = exportCanvas(canvas, video, trim, render, (f) => notify(`Exporting… ${Math.round(f * 100)}%. Keep this tab open.`, true));
-  const blob = await exporting.done;
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  let result: { blob: Blob | null; ext: string } | null = null;
+  try {
+    result = await exportFastPath();
+  } catch (err) {
+    console.warn("Fast export failed, falling back to real-time export.", err);
+  }
+  if (!result) {
+    exporting = exportCanvas(canvas, video, trim, render, (f) =>
+      notify(`Exporting in real time… ${Math.round(f * 100)}%. Keep this tab open.`, true),
+    );
+    result = { blob: await exporting.done, ext: "webm" };
+  }
   exporting = null;
   exportBtn.textContent = "Export video";
-  if (blob) {
-    download(blob, `panreel-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.webm`);
-    notify("Exported. Your video is in your downloads.");
+  if (result.blob) {
+    download(result.blob, `panreel-${stamp}.${result.ext}`);
+    notify(`Exported ${result.ext.toUpperCase()}. Your video is in your downloads.`);
   } else {
     notify("Export cancelled.");
   }
 });
+
+/** Resolves to null when this browser can't do a WebCodecs export. */
+async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | null> {
+  if (!sourceBlob) return null;
+  // Loaded on demand so the encoder library doesn't slow down the first page load.
+  const { detectFastExport, exportFast } = await import("./fastExport");
+  const size = { width: canvas.width, height: canvas.height };
+  const plan = await detectFastExport(sourceBlob, size);
+  if (!plan) return null;
+  const started = performance.now();
+  const job = exportFast({
+    source: sourceBlob,
+    size,
+    plan,
+    range: trim,
+    frameRate: 60,
+    draw: (c, frame, frameSize, time) => drawFrame(c, frame, frameSize, style, zooms, time),
+    onProgress: (f) => notify(`Exporting ${plan.container.toUpperCase()}… ${Math.round(f * 100)}%`, true),
+  });
+  exporting = job;
+  const blob = await job.done;
+  console.info(`Exported in ${((performance.now() - started) / 1000).toFixed(1)} s`);
+  return { blob, ext: job.extension };
+}
 
 // ---- Helpers -----------------------------------------------------------------
 
