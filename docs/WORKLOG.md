@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-05 18:00 JST — custom backdrops (Phase 1 complete)
+- Added a solid colour picker and image backdrops (pick a file or drop an image on the canvas); images cover the canvas and can be blurred where `ctx.filter` is supported.
+- Tests: 31 passing (new `coverRect` cases); checked colour, image, blur and switching back in Chromium with Playwright.
+- Next: Phase 2 — fast MP4 export via WebCodecs + an MP4 muxer.
+
 ## 2026-11-05 13:00 JST — trim and resizable zooms
 - Added trim start/end (inspector buttons, I / O keys, hatched timeline shading); playback and export respect the trim.
 - Zoom bars on the timeline now have drag grips to change their length (no overlap, 0.5 s minimum).

@@ -13,7 +13,7 @@ Everything runs locally; no server, no account.
 - [x] Real-time WebM export
 - [x] Trim start / end (buttons and I / O keys)
 - [x] Drag zoom edges on the timeline to change their length
-- [ ] Custom solid colour and image backdrops
+- [x] Custom solid colour and image backdrops (with optional blur)
 
 ## Phase 2 — Quality output
 - [ ] Fast MP4 export with WebCodecs + an MP4 muxer (faster than real time)
