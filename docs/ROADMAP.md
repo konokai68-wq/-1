@@ -11,8 +11,8 @@ Everything runs locally; no server, no account.
 - [x] Canvas sizes: 16:9, 1:1, 9:16, 4:3
 - [x] Manual zooms with eased in/out, click-to-aim, zoom amount
 - [x] Real-time WebM export
-- [ ] Trim start / end
-- [ ] Drag zoom edges on the timeline to change their length
+- [x] Trim start / end (buttons and I / O keys)
+- [x] Drag zoom edges on the timeline to change their length
 - [ ] Custom solid colour and image backdrops
 
 ## Phase 2 — Quality output

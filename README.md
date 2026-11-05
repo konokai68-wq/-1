@@ -12,6 +12,8 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Style** the frame: six gradient backdrops, padding, corner radius and shadow
 - **Canvas sizes** for every platform: 16:9, 1:1, 9:16 and 4:3
 - **Smooth zooms**: press *Add zoom here*, click the preview to aim it, choose 1.4×–3×. Zooms ease in and out automatically
+- **Trim** the start and end — set them to the playhead with a button or the <kbd>I</kbd> / <kbd>O</kbd> keys
+- **Resize zooms** by dragging the ends of their bars on the timeline
 - **Export** to WebM (rendered in real time; keep the tab open)
 
 ## Use it
@@ -33,7 +35,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: trimming, MP4 export via WebCodecs, a draggable zoom timeline, and a webcam bubble.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: custom backdrops, fast MP4 export via WebCodecs, and a webcam bubble.
 
 ## Privacy
 
