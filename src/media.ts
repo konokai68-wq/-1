@@ -74,12 +74,14 @@ export interface ExportJob {
 }
 
 /**
- * Play the video from the start and record the styled canvas in real time.
- * `onFrame` must redraw the canvas; it is called on every animation frame.
+ * Play the video from `range.start` to `range.end` and record the styled
+ * canvas in real time. `onFrame` must redraw the canvas; it is called on every
+ * animation frame.
  */
 export function exportCanvas(
   canvas: HTMLCanvasElement,
   video: HTMLVideoElement,
+  range: { start: number; end: number },
   onFrame: () => void,
   onProgress: (fraction: number) => void,
 ): ExportJob {
@@ -102,15 +104,16 @@ export function exportCanvas(
     };
   });
 
+  const length = Math.max(0.001, range.end - range.start);
   const tick = () => {
     onFrame();
-    onProgress(video.duration ? video.currentTime / video.duration : 0);
-    if (video.ended) recorder.state !== "inactive" && recorder.stop();
+    onProgress(Math.min(1, Math.max(0, (video.currentTime - range.start) / length)));
+    if (video.ended || video.currentTime >= range.end) recorder.state !== "inactive" && recorder.stop();
     else raf = requestAnimationFrame(tick);
   };
 
   video.pause();
-  video.currentTime = 0;
+  video.currentTime = range.start;
   video.addEventListener(
     "seeked",
     () => {
