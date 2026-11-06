@@ -15,6 +15,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Trim** the start and end — set them to the playhead with a button or the <kbd>I</kbd> / <kbd>O</kbd> keys
 - **Resize zooms** by dragging the ends of their bars on the timeline
 - **Export** to MP4 (H.264) or WebM with WebCodecs: every frame is decoded, styled and re-encoded directly, so the result is frame-accurate and you don't have to watch it play. MP4 is used when your browser can encode H.264 (and AAC for the soundtrack); otherwise Panreel picks WebM so the audio is never dropped. Browsers without WebCodecs fall back to real-time WebM recording
+- **GIF export** for short clips (up to 30 s): 480p, 15 fps, loops forever — ready to drop into a README, pull request or chat
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser
 
 ## Use it
@@ -36,11 +37,11 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: GIF export, undo / redo, and a webcam bubble.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: undo / redo, keyboard shortcuts and a webcam bubble.
 
 ## Credits
 
-Encoding and muxing use [Mediabunny](https://github.com/Vanilagy/mediabunny) (MPL-2.0).
+Encoding and muxing use [Mediabunny](https://github.com/Vanilagy/mediabunny) (MPL-2.0); GIFs are written with [gifenc](https://github.com/mattdesl/gifenc) (MIT).
 
 ## Privacy
 

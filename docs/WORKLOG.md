@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-06 13:00 JST — GIF export
+- Added a Video / GIF format switch in the Export section. GIFs are 480p (shorter side), 15 fps with alternating 60/70 ms delays so the length stays exact, capped at 30 s; frames come from WebCodecs (Mediabunny CanvasSink) or, without it, by seeking a hidden <video>. Encoded with gifenc (MIT), lazy-loaded (~5 kB gzip).
+- Checked in headless Chromium: 4 s clip with a zoom → 854×480 GIF, 60 frames, 4.0 s, zoom rendered; same result with WebCodecs disabled. Tests: 50 passing.
+- Next: undo / redo and keyboard shortcuts.
+
 ## 2026-11-06 09:00 JST — export resolution and frame rate
 - Added an Export section: 720p / 1080p / 1440p / 4K (by the canvas's shorter side, even dimensions) and 30 / 60 fps, remembered in localStorage. Used by both the WebCodecs path and the real-time fallback.
 - Checked in headless Chromium: 720p/30 fps → H.264 MP4 1280×720, 30 fps, 3.0 s; settings survive reload. Tests: 44 passing.

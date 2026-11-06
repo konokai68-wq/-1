@@ -19,7 +19,7 @@ Everything runs locally; no server, no account.
 - [x] WebCodecs export: MP4/H.264 (WebM/VP9 fallback that keeps audio), frame-accurate, no real-time playback
 - [x] 30 fps export option
 - [ ] Faster export: render in a worker (OffscreenCanvas)
-- [ ] GIF export for short clips
+- [x] GIF export for short clips (≤ 30 s, 480p, 15 fps; WebCodecs decode with a <video>-seeking fallback)
 - [x] Export resolution (720p / 1080p / 1440p / 4K) and frame-rate (30 / 60 fps) options
 - [ ] Undo / redo; keyboard shortcuts
 
