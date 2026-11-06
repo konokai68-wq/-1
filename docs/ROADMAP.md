@@ -21,7 +21,7 @@ Everything runs locally; no server, no account.
 - [ ] Faster export: render in a worker (OffscreenCanvas)
 - [x] GIF export for short clips (≤ 30 s, 480p, 15 fps; WebCodecs decode with a <video>-seeking fallback)
 - [x] Export resolution (720p / 1080p / 1440p / 4K) and frame-rate (30 / 60 fps) options
-- [ ] Undo / redo; keyboard shortcuts
+- [x] Undo / redo (zooms, trim, frame sliders); keyboard shortcuts with a `?` help sheet
 
 ## Phase 3 — Studio features
 - [ ] Webcam bubble (record camera alongside the screen; shape, size, position)

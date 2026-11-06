@@ -17,6 +17,20 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Export** to MP4 (H.264) or WebM with WebCodecs: every frame is decoded, styled and re-encoded directly, so the result is frame-accurate and you don't have to watch it play. MP4 is used when your browser can encode H.264 (and AAC for the soundtrack); otherwise Panreel picks WebM so the audio is never dropped. Browsers without WebCodecs fall back to real-time WebM recording
 - **GIF export** for short clips (up to 30 s): 480p, 15 fps, loops forever — ready to drop into a README, pull request or chat
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser
+- **Undo / redo** for zooms, trim and frame settings (<kbd>Ctrl/⌘ Z</kbd>, <kbd>Ctrl/⌘ Shift Z</kbd>)
+
+## Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| <kbd>Space</kbd> | Play / pause |
+| <kbd>←</kbd> <kbd>→</kbd> | Step 0.1 s (hold <kbd>Shift</kbd> for 1 s) |
+| <kbd>Home</kbd> <kbd>End</kbd> | Jump to the clip start / end |
+| <kbd>I</kbd> <kbd>O</kbd> | Set the clip start / end to the playhead |
+| <kbd>Z</kbd> | Add a zoom at the playhead |
+| <kbd>Delete</kbd> | Remove the zoom at the playhead |
+| <kbd>Ctrl/⌘ Z</kbd> · <kbd>Ctrl/⌘ Shift Z</kbd> | Undo · Redo |
+| <kbd>?</kbd> | Show all shortcuts |
 
 ## Use it
 
@@ -37,7 +51,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: undo / redo, keyboard shortcuts and a webcam bubble.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a webcam bubble, cut / speed-up segments and saving projects locally.
 
 ## Credits
 

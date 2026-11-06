@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-06 18:00 JST — undo / redo and keyboard shortcuts
+- Added undo / redo (toolbar buttons, Ctrl/⌘ Z, Ctrl/⌘ Shift Z or Ctrl Y) for zooms, trim and the frame sliders; a slider drag merges into one step (`history.ts`). Backdrop and export settings are not part of history yet.
+- New keys (`shortcuts.ts`): Z add zoom, Delete remove zoom at playhead, ← / → step 0.1 s (Shift 1 s), Home / End to clip edges, ? opens a shortcuts sheet (`<dialog>`).
+- Checked in headless Chromium with Playwright (add → trim → undo ×2 → redo → delete → undo, slider merge, dialog open/close; no page errors). Tests: 59 passing.
+- Next: Phase 3 — webcam bubble, or faster export in a worker.
+
 ## 2026-11-06 13:00 JST — GIF export
 - Added a Video / GIF format switch in the Export section. GIFs are 480p (shorter side), 15 fps with alternating 60/70 ms delays so the length stays exact, capped at 30 s; frames come from WebCodecs (Mediabunny CanvasSink) or, without it, by seeking a hidden <video>. Encoded with gifenc (MIT), lazy-loaded (~5 kB gzip).
 - Checked in headless Chromium: 4 s clip with a zoom → 854×480 GIF, 60 frames, 4.0 s, zoom rendered; same result with WebCodecs disabled. Tests: 50 passing.
