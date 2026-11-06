@@ -13,16 +13,15 @@ export function pickMimeType(): string {
 export interface Recording {
   stop(): void;
   done: Promise<Blob>;
+  /** The webcam clip recorded alongside, or null when no camera was used. */
+  camera: Promise<Blob | null>;
+  /** Why the camera could not be used, if it was asked for. */
+  cameraError: string | null;
 }
 
-/** Ask the browser for a screen, window or tab and record it until stopped. */
-export async function recordScreen(withAudio: boolean): Promise<Recording> {
-  const stream = await navigator.mediaDevices.getDisplayMedia({
-    video: { frameRate: 60 },
-    audio: withAudio,
-  });
+function startRecorder(stream: MediaStream, bitsPerSecond: number): { recorder: MediaRecorder; done: Promise<Blob> } {
   const mimeType = pickMimeType();
-  const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 12_000_000 } : undefined);
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: bitsPerSecond } : undefined);
   const chunks: Blob[] = [];
   recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const done = new Promise<Blob>((resolve) => {
@@ -31,10 +30,42 @@ export async function recordScreen(withAudio: boolean): Promise<Recording> {
       resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
     };
   });
+  return { recorder, done };
+}
+
+/**
+ * Ask the browser for a screen, window or tab and record it until stopped.
+ * With `withCamera`, the webcam is recorded too, as a separate clip that starts
+ * at the same moment, so the bubble can still be styled afterwards.
+ */
+export async function recordScreen(withAudio: boolean, withCamera = false): Promise<Recording> {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: 60 },
+    audio: withAudio,
+  });
+  let camStream: MediaStream | null = null;
+  let cameraError: string | null = null;
+  if (withCamera) {
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        audio: false,
+      });
+    } catch {
+      cameraError = "The camera could not be used, so only the screen is being recorded.";
+    }
+  }
+  const screen = startRecorder(stream, 12_000_000);
+  const cam = camStream ? startRecorder(camStream, 4_000_000) : null;
+  const stop = () => {
+    if (screen.recorder.state !== "inactive") screen.recorder.stop();
+    if (cam && cam.recorder.state !== "inactive") cam.recorder.stop();
+  };
   // The user can also end sharing from the browser's own UI.
-  stream.getVideoTracks()[0]?.addEventListener("ended", () => recorder.state !== "inactive" && recorder.stop());
-  recorder.start(1000);
-  return { stop: () => recorder.state !== "inactive" && recorder.stop(), done };
+  stream.getVideoTracks()[0]?.addEventListener("ended", stop);
+  screen.recorder.start(1000);
+  cam?.recorder.start(1000);
+  return { stop, done: screen.done, camera: cam ? cam.done : Promise.resolve(null), cameraError };
 }
 
 /**

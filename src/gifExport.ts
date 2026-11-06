@@ -14,7 +14,7 @@ export interface GifExportOptions {
   source: Blob;
   size: Size;
   range: { start: number; end: number };
-  draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void;
+  draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
   onProgress: (fraction: number) => void;
 }
 
@@ -39,7 +39,7 @@ export function exportGif(opts: GifExportOptions): ExportJob {
     try {
       for await (const frame of sourceFrames(opts.source, times, check)) {
         check();
-        if (frame) opts.draw(ctx, frame.image, frame.size, times[i]);
+        if (frame) await opts.draw(ctx, frame.image, frame.size, times[i]);
         const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const palette = quantize(data, 256);
         const index = applyPalette(data, palette);

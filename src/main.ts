@@ -3,7 +3,8 @@ import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
-import { ASPECTS, BACKDROPS, drawFrame, type Backdrop, type Style } from "./render";
+import { ASPECTS, BACKDROPS, drawFrame, type Backdrop, type CameraLayer, type Style } from "./render";
+import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShape, type Corner } from "./camera";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
@@ -55,6 +56,17 @@ const redoBtn = $<HTMLButtonElement>("redo");
 const shortcutsDialog = $<HTMLDialogElement>("shortcuts");
 const shortcutList = $("shortcutList");
 const shortcutsBtn = $<HTMLButtonElement>("showShortcuts");
+const camVideo = $<HTMLVideoElement>("camVideo");
+const camRecord = $<HTMLInputElement>("camRecord");
+const camControls = $("camControls");
+const camShow = $<HTMLInputElement>("camShow");
+const camShape = $("camShape");
+const camSize = $<HTMLInputElement>("camSize");
+const camCorner = $("camCorner");
+const camMirror = $<HTMLInputElement>("camMirror");
+const camRemove = $<HTMLButtonElement>("camRemove");
+const camFile = $<HTMLInputElement>("camFile");
+const camAddNote = $("camAddNote");
 
 const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
 let zooms: ZoomSegment[] = [];
@@ -63,6 +75,8 @@ let hasVideo = false;
 let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
 let sourceBlob: Blob | null = null;
+let cameraBlob: Blob | null = null;
+const bubble: Bubble = { ...DEFAULT_BUBBLE };
 
 // ---- Rendering -------------------------------------------------------------
 
@@ -70,8 +84,33 @@ function sourceSize() {
   return { width: video.videoWidth, height: video.videoHeight };
 }
 
+function previewCamera(): CameraLayer | null {
+  if (!cameraBlob || camVideo.readyState < 2) return null;
+  return { image: camVideo, size: { width: camVideo.videoWidth, height: camVideo.videoHeight }, bubble };
+}
+
 function render() {
-  drawFrame(ctx, hasVideo ? video : null, hasVideo ? sourceSize() : { width: 16, height: 9 }, style, zooms, video.currentTime);
+  syncCamera();
+  drawFrame(
+    ctx,
+    hasVideo ? video : null,
+    hasVideo ? sourceSize() : { width: 16, height: 9 },
+    style,
+    zooms,
+    video.currentTime,
+    previewCamera(),
+  );
+}
+
+/** Keep the camera clip in step with the screen clip (both start at 0). */
+function syncCamera() {
+  if (!cameraBlob || !camVideo.duration) return;
+  const target = Math.min(video.currentTime, camVideo.duration);
+  const playing = !video.paused && !video.ended && video.currentTime < camVideo.duration;
+  if (playing && camVideo.paused) void camVideo.play().catch(() => {});
+  if (!playing && !camVideo.paused) camVideo.pause();
+  const drift = Math.abs(camVideo.currentTime - target);
+  if (!camVideo.seeking && drift > (playing ? 0.2 : 0.02)) camVideo.currentTime = target;
 }
 
 function loop() {
@@ -296,10 +335,11 @@ redoBtn.addEventListener("click", redo);
 
 // ---- Loading media -----------------------------------------------------------
 
-async function open(blob: Blob) {
+async function open(blob: Blob, camera: Blob | null = null) {
   try {
     await loadVideo(video, blob);
     sourceBlob = blob;
+    await setCamera(camera);
     hasVideo = true;
     zooms = [];
     trim = fullTrim(video.duration);
@@ -337,6 +377,121 @@ canvasWrap.addEventListener("drop", (e) => {
   else notify("Drop a video (WebM or MP4) to edit, or an image to use as the backdrop.");
 });
 
+// ---- Camera bubble -----------------------------------------------------------
+
+async function setCamera(blob: Blob | null) {
+  if (camVideo.src.startsWith("blob:")) URL.revokeObjectURL(camVideo.src);
+  cameraBlob = null;
+  if (blob) {
+    try {
+      await loadVideo(camVideo, blob);
+      camVideo.muted = true;
+      cameraBlob = blob;
+    } catch {
+      notify("That camera clip could not be opened. Try a WebM or MP4 file.");
+    }
+  } else {
+    camVideo.removeAttribute("src");
+    camVideo.load();
+  }
+  camControls.hidden = !cameraBlob;
+  camAddNote.hidden = !!cameraBlob;
+}
+
+const SHAPES: { id: BubbleShape; label: string }[] = [
+  { id: "circle", label: "Circle" },
+  { id: "rounded", label: "Rounded" },
+];
+for (const sh of SHAPES) {
+  radio(camShape, "camShape", sh.id, sh.label, sh.id === bubble.shape, () => (bubble.shape = sh.id));
+}
+
+const CORNERS: { id: Corner; label: string }[] = [
+  { id: "tl", label: "Top left" },
+  { id: "tr", label: "Top right" },
+  { id: "bl", label: "Bottom left" },
+  { id: "br", label: "Bottom right" },
+];
+for (const c of CORNERS) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.dataset.corner = c.id;
+  b.title = c.label;
+  b.setAttribute("role", "radio");
+  b.setAttribute("aria-label", c.label);
+  b.addEventListener("click", () => setCorner(c.id));
+  camCorner.append(b);
+}
+
+function setCorner(c: Corner) {
+  bubble.corner = c;
+  camCorner.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.corner === c)));
+}
+setCorner(bubble.corner);
+
+camShow.addEventListener("change", () => (bubble.visible = camShow.checked));
+camMirror.addEventListener("change", () => (bubble.mirror = camMirror.checked));
+camSize.addEventListener("input", () => (bubble.size = Number(camSize.value)));
+camRemove.addEventListener("click", () => {
+  void setCamera(null);
+  notify("Camera removed from this video.");
+});
+camFile.addEventListener("change", async () => {
+  const f = camFile.files?.[0];
+  camFile.value = "";
+  if (!f) return;
+  if (!hasVideo) return notify("Open or record a screen video first, then add the camera clip.");
+  await setCamera(f);
+  if (cameraBlob) notify("Camera added. It starts at the same moment as the screen video.");
+});
+
+/** Is the canvas point (in canvas pixels) on the visible bubble? */
+function onBubble(x: number, y: number) {
+  if (!cameraBlob || !bubble.visible) return false;
+  const r = bubbleRect(canvas, bubble);
+  return x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
+}
+
+function canvasPoint(e: MouseEvent) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+    y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+  };
+}
+
+let bubbleDrag: { pointerId: number; moved: boolean } | null = null;
+let suppressClick = false;
+
+canvas.addEventListener("pointerdown", (e) => {
+  const p = canvasPoint(e);
+  if (!onBubble(p.x, p.y) || exporting) return;
+  e.preventDefault();
+  bubbleDrag = { pointerId: e.pointerId, moved: false };
+  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add("moving-bubble");
+});
+canvas.addEventListener("pointermove", (e) => {
+  const p = canvasPoint(e);
+  if (!bubbleDrag) {
+    canvas.classList.toggle("over-bubble", onBubble(p.x, p.y));
+    return;
+  }
+  if (e.pointerId !== bubbleDrag.pointerId) return;
+  bubbleDrag.moved = true;
+  const c = nearestCorner(canvas, p.x, p.y);
+  if (c !== bubble.corner) setCorner(c);
+});
+const endBubbleDrag = (e: PointerEvent) => {
+  if (!bubbleDrag || e.pointerId !== bubbleDrag.pointerId) return;
+  // A press on the bubble never aims a zoom.
+  suppressClick = true;
+  bubbleDrag = null;
+  canvas.classList.remove("moving-bubble");
+};
+canvas.addEventListener("pointerup", endBubbleDrag);
+canvas.addEventListener("pointercancel", endBubbleDrag);
+
 recordBtn.addEventListener("click", async () => {
   if (recording) {
     recording.stop();
@@ -347,16 +502,17 @@ recordBtn.addEventListener("click", async () => {
     return;
   }
   try {
-    recording = await recordScreen(true);
+    recording = await recordScreen(true, camRecord.checked);
   } catch {
     notify("Recording did not start. Choose a screen, window or tab to share.");
     return;
   }
   setRecording(true);
-  const blob = await recording.done;
+  if (recording.cameraError) notify(recording.cameraError);
+  const [blob, camera] = await Promise.all([recording.done, recording.camera]);
   recording = null;
   setRecording(false);
-  await open(blob);
+  await open(blob, camera);
 });
 
 function setRecording(on: boolean) {
@@ -515,6 +671,10 @@ function removeZoomAtPlayhead() {
 }
 
 canvas.addEventListener("click", (e) => {
+  if (suppressClick) {
+    suppressClick = false;
+    return;
+  }
   const i = zoomIndexAt(zooms, video.currentTime);
   if (i < 0 || !hasVideo) return;
   // Map the click from canvas space into the video frame (unzoomed).
@@ -675,7 +835,7 @@ async function exportGifPath(stamp: string) {
     source: sourceBlob,
     size: gifSize({ width: canvas.width, height: canvas.height }),
     range: trim,
-    draw: (c, frame, frameSize, time) => drawFrame(c, frame, frameSize, style, zooms, time),
+    draw: await styledDraw(),
     onProgress: (f) => notify(`Exporting GIF… ${Math.round(f * 100)}%`, true),
   });
   exporting = job;
@@ -686,6 +846,7 @@ async function exportGifPath(stamp: string) {
     console.error(err);
     notify("GIF export failed in this browser. Try exporting a video instead.");
   }
+  releaseExportCamera();
   exporting = null;
   updateExportInfo();
   if (blob) {
@@ -694,6 +855,26 @@ async function exportGifPath(stamp: string) {
   } else if (!toast.textContent?.startsWith("GIF export failed")) {
     notify("Export cancelled.");
   }
+}
+
+type Draw = (c: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: { width: number; height: number }, time: number) => Promise<void>;
+
+let exportCamera: { dispose(): void } | null = null;
+
+/** Frame renderer for the exporters, pulling camera frames when there is a camera. */
+async function styledDraw(): Promise<Draw> {
+  const cam = cameraBlob && bubble.visible ? await (await import("./cameraFrames")).openCameraFrames(cameraBlob) : null;
+  exportCamera = cam;
+  const b = { ...bubble };
+  return async (c, frame, frameSize, time) => {
+    const f = cam ? await cam.at(time) : null;
+    drawFrame(c, frame, frameSize, style, zooms, time, f ? { ...f, bubble: b } : null);
+  };
+}
+
+function releaseExportCamera() {
+  exportCamera?.dispose();
+  exportCamera = null;
 }
 
 /** Resolves to null when this browser can't do a WebCodecs export. */
@@ -711,11 +892,16 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     plan,
     range: trim,
     frameRate: settings.frameRate,
-    draw: (c, frame, frameSize, time) => drawFrame(c, frame, frameSize, style, zooms, time),
+    draw: await styledDraw(),
     onProgress: (f) => notify(`Exporting ${plan.container.toUpperCase()}… ${Math.round(f * 100)}%`, true),
   });
   exporting = job;
-  const blob = await job.done;
+  let blob: Blob | null;
+  try {
+    blob = await job.done;
+  } finally {
+    releaseExportCamera();
+  }
   console.info(`Exported in ${((performance.now() - started) / 1000).toFixed(1)} s`);
   return { blob, ext: job.extension };
 }

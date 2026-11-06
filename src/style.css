@@ -239,3 +239,29 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .btn-record[aria-pressed="true"] .dot { animation: none; }
 }
+
+/* Camera bubble */
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--ink-soft); cursor: pointer; }
+.check input { accent-color: var(--cue); margin: 0; }
+.cam-controls { display: flex; flex-direction: column; gap: 10px; }
+.cam-controls[hidden] { display: none; }
+.cam-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.corners {
+  display: grid; grid-template-columns: repeat(2, 22px); grid-template-rows: repeat(2, 16px); gap: 3px;
+  padding: 4px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--table);
+}
+.corners button {
+  border: 0; padding: 0; cursor: pointer; border-radius: 3px; background: transparent; position: relative;
+}
+.corners button::after {
+  content: ""; position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--line);
+}
+.corners button[data-corner="tl"]::after { top: 1px; left: 1px; }
+.corners button[data-corner="tr"]::after { top: 1px; right: 1px; }
+.corners button[data-corner="bl"]::after { bottom: 1px; left: 1px; }
+.corners button[data-corner="br"]::after { bottom: 1px; right: 1px; }
+.corners button:hover::after { background: var(--ink-soft); }
+.corners button[aria-checked="true"]::after { background: var(--cue); }
+#canvas.over-bubble { cursor: grab; }
+#canvas.moving-bubble { cursor: grabbing; }
+label.link-btn { cursor: pointer; }

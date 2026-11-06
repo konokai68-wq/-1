@@ -86,7 +86,7 @@ export interface FastExportOptions {
   range: { start: number; end: number };
   frameRate: number;
   /** Draw one styled frame for `time` (seconds on the source timeline). */
-  draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void;
+  draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
   onProgress: (fraction: number) => void;
 }
 
@@ -122,9 +122,9 @@ export function exportFast(opts: FastExportOptions): FastExportJob {
         forceTranscode: true,
         processedWidth: opts.size.width,
         processedHeight: opts.size.height,
-        process: (sample) => {
+        process: async (sample) => {
           const frame = sample.toCanvasImageSource();
-          opts.draw(ctx, frame, { width: sample.displayWidth, height: sample.displayHeight }, sourceTime(sample.timestamp, opts.range.start));
+          await opts.draw(ctx, frame, { width: sample.displayWidth, height: sample.displayHeight }, sourceTime(sample.timestamp, opts.range.start));
           return canvas;
         },
       },

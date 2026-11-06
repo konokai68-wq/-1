@@ -1,3 +1,4 @@
+import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, fitFrame, sourceWindow, type Size, type ZoomSegment } from "./layout";
 
 export interface GradientBackdrop {
@@ -55,6 +56,13 @@ export interface Style {
   shadow: number;
 }
 
+/** A webcam picture to draw as a bubble over the frame. */
+export interface CameraLayer {
+  image: CanvasImageSource;
+  size: Size;
+  bubble: Bubble;
+}
+
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource | null,
@@ -62,6 +70,7 @@ export function drawFrame(
   style: Style,
   zooms: readonly ZoomSegment[],
   time: number,
+  camera: CameraLayer | null = null,
 ): void {
   const { width, height } = ctx.canvas;
   paintBackdrop(ctx, style.backdrop, width, height);
@@ -90,6 +99,42 @@ export function drawFrame(
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(frame.x, frame.y, frame.width, frame.height);
   }
+  ctx.restore();
+
+  if (camera?.bubble.visible && camera.size.width > 0) drawBubble(ctx, camera);
+}
+
+/** Draw the webcam bubble: soft shadow, cropped camera picture and a thin rim. */
+export function drawBubble(ctx: CanvasRenderingContext2D, camera: CameraLayer): void {
+  const { width, height } = ctx.canvas;
+  const rect = bubbleRect({ width, height }, camera.bubble);
+  const r = bubbleRadius(rect, camera.bubble.shape);
+  const crop = squareCrop(camera.size);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(8, 14, 30, 0.45)";
+  ctx.shadowBlur = rect.width * 0.12;
+  ctx.shadowOffsetY = rect.width * 0.03;
+  ctx.fillStyle = "#000";
+  roundRect(ctx, rect.x, rect.y, rect.width, rect.height, r);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  roundRect(ctx, rect.x, rect.y, rect.width, rect.height, r);
+  ctx.clip();
+  if (camera.bubble.mirror) {
+    ctx.translate(rect.x * 2 + rect.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(camera.image, crop.x, crop.y, crop.width, crop.height, rect.x, rect.y, rect.width, rect.height);
+  ctx.restore();
+
+  ctx.save();
+  ctx.lineWidth = Math.max(2, rect.width * 0.015);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  roundRect(ctx, rect.x, rect.y, rect.width, rect.height, r);
+  ctx.stroke();
   ctx.restore();
 }
 
