@@ -205,6 +205,18 @@ kbd {
   border-bottom-width: 2px; border-radius: 4px; color: var(--ink);
 }
 .link-btn { border: 0; background: none; padding: 0; color: var(--cue); cursor: pointer; text-decoration: underline; font-size: inherit; }
+.history { display: flex; gap: 4px; }
+.shortcuts-link { align-self: flex-start; font-size: 0.8125rem; display: inline-flex; gap: 6px; align-items: center; color: var(--ink-soft); text-decoration: none; }
+.shortcuts-link:hover { color: var(--ink); }
+.shortcuts { border: 1px solid var(--line); border-radius: 12px; padding: 0; background: var(--panel); color: var(--ink); width: min(380px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+.shortcuts::backdrop { background: rgba(10, 14, 20, 0.45); }
+.shortcuts-panel { padding: 16px 18px 18px; }
+.shortcuts-panel header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.shortcuts-panel h2 { font-size: 1rem; margin: 0; }
+.shortcuts-panel .icon-btn { width: 28px; height: 28px; font-size: 0.75rem; }
+.shortcuts dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 0.875rem; }
+.shortcuts dt { display: flex; gap: 4px; justify-content: flex-end; white-space: nowrap; }
+.shortcuts dd { margin: 0; color: var(--ink-soft); }
 .note, .privacy { font-size: 0.8125rem; color: var(--ink-soft); margin: 0; line-height: 1.45; }
 .privacy { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
 

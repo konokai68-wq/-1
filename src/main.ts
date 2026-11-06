@@ -5,6 +5,8 @@ import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitize
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
 import { ASPECTS, BACKDROPS, drawFrame, type Backdrop, type Style } from "./render";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
+import { History } from "./history";
+import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
 import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -48,6 +50,11 @@ const resolutionGroup = $("resolution");
 const frameRateGroup = $("frameRate");
 const formatGroup = $("format");
 const exportInfo = $("exportInfo");
+const undoBtn = $<HTMLButtonElement>("undo");
+const redoBtn = $<HTMLButtonElement>("redo");
+const shortcutsDialog = $<HTMLDialogElement>("shortcuts");
+const shortcutList = $("shortcutList");
+const shortcutsBtn = $<HTMLButtonElement>("showShortcuts");
 
 const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
 let zooms: ZoomSegment[] = [];
@@ -219,8 +226,73 @@ updateExportInfo();
 for (const key of ["padding", "radius", "shadow"] as const) {
   const input = $<HTMLInputElement>(key);
   input.value = String(style[key]);
-  input.addEventListener("input", () => (style[key] = Number(input.value)));
+  input.addEventListener("input", () => {
+    checkpoint(key);
+    style[key] = Number(input.value);
+  });
 }
+
+// ---- Undo / redo -------------------------------------------------------------
+
+const FRAME_KEYS = ["padding", "radius", "shadow"] as const;
+
+/** Everything undo / redo restores: the timeline edits and the frame sliders. */
+interface EditState {
+  zooms: ZoomSegment[];
+  trim: Trim;
+  frame: Pick<Style, (typeof FRAME_KEYS)[number]>;
+}
+
+const history = new History<EditState>();
+
+function snapshot(): EditState {
+  return {
+    zooms: zooms.map((z) => ({ ...z })),
+    trim: { ...trim },
+    frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
+  };
+}
+
+/** Save the current state as an undo step. Call before changing anything. */
+function checkpoint(key: string | null = null) {
+  if (!hasVideo) return;
+  history.record(snapshot(), key);
+  syncHistoryUi();
+}
+
+function restore(s: EditState) {
+  zooms = s.zooms;
+  trim = s.trim;
+  for (const key of FRAME_KEYS) {
+    style[key] = s.frame[key];
+    $<HTMLInputElement>(key).value = String(s.frame[key]);
+  }
+  lastActive = -2;
+  renderTrimUi();
+  syncHistoryUi();
+}
+
+function undo() {
+  const s = history.undo(snapshot());
+  if (!s) return notify("Nothing to undo.");
+  restore(s);
+  notify("Undone.");
+}
+
+function redo() {
+  const s = history.redo(snapshot());
+  if (!s) return notify("Nothing to redo.");
+  restore(s);
+  notify("Redone.");
+}
+
+function syncHistoryUi() {
+  undoBtn.disabled = !hasVideo || !history.canUndo;
+  redoBtn.disabled = !hasVideo || !history.canRedo;
+}
+
+undoBtn.addEventListener("click", undo);
+redoBtn.addEventListener("click", redo);
 
 // ---- Loading media -----------------------------------------------------------
 
@@ -231,6 +303,8 @@ async function open(blob: Blob) {
     hasVideo = true;
     zooms = [];
     trim = fullTrim(video.duration);
+    history.clear();
+    syncHistoryUi();
     empty.hidden = true;
     for (const el of [exportBtn, playBtn, scrub, addZoomBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
@@ -301,17 +375,71 @@ scrub.addEventListener("input", () => {
   if (video.duration) video.currentTime = (Number(scrub.value) / 1000) * video.duration;
 });
 document.addEventListener("keydown", (e) => {
-  if (!hasVideo || exporting || e.metaKey || e.ctrlKey || e.altKey) return;
+  const action = actionFor(e);
+  if (!action || (e.repeat && (action === "undo" || action === "redo"))) return;
   const t = e.target;
+  // Leave typing, pickers and native control keys alone.
   if (t instanceof HTMLSelectElement || (t instanceof HTMLInputElement && t.type !== "range")) return;
-  if (e.code === "Space" && !(t instanceof HTMLInputElement || t instanceof HTMLButtonElement)) {
+  const onControl = t instanceof HTMLInputElement || t instanceof HTMLButtonElement;
+  if (onControl && ["play", "back", "forward", "backLong", "forwardLong", "toStart", "toEnd"].includes(action)) return;
+  if (action === "help") {
     e.preventDefault();
-    playBtn.click();
-  } else if (e.key === "i" || e.key === "I") {
-    setTrim("start");
-  } else if (e.key === "o" || e.key === "O") {
-    setTrim("end");
+    toggleShortcuts();
+    return;
   }
+  if (!hasVideo || exporting || shortcutsDialog.open) return;
+  e.preventDefault();
+  runAction(action);
+});
+
+function runAction(action: Action) {
+  const step = (dt: number) => {
+    video.pause();
+    video.currentTime = Math.min(video.duration, Math.max(0, video.currentTime + dt));
+  };
+  switch (action) {
+    case "undo": return undo();
+    case "redo": return redo();
+    case "play": return playBtn.click();
+    case "setIn": return setTrim("start");
+    case "setOut": return setTrim("end");
+    case "addZoom": return addZoomBtn.click();
+    case "removeZoom": return removeZoomAtPlayhead();
+    case "back": return step(-0.1);
+    case "forward": return step(0.1);
+    case "backLong": return step(-1);
+    case "forwardLong": return step(1);
+    case "toStart":
+      video.pause();
+      video.currentTime = trim.start;
+      return;
+    case "toEnd":
+      video.pause();
+      video.currentTime = trim.end;
+      return;
+  }
+}
+
+for (const s of SHORTCUTS) {
+  const dt = document.createElement("dt");
+  for (const k of s.keys) {
+    const kbd = document.createElement("kbd");
+    kbd.textContent = k;
+    dt.append(kbd);
+  }
+  const dd = document.createElement("dd");
+  dd.textContent = s.label;
+  shortcutList.append(dt, dd);
+}
+
+function toggleShortcuts() {
+  if (shortcutsDialog.open) shortcutsDialog.close();
+  else shortcutsDialog.showModal();
+}
+shortcutsBtn.addEventListener("click", toggleShortcuts);
+shortcutsDialog.addEventListener("click", (e) => {
+  // Clicking the backdrop (outside the panel) closes the dialog.
+  if (e.target === shortcutsDialog) shortcutsDialog.close();
 });
 
 let lastActive = -2;
@@ -336,6 +464,7 @@ function syncTransport() {
 // ---- Trim --------------------------------------------------------------------
 
 function setTrim(edge: Edge) {
+  checkpoint();
   trim = setTrimEdge(trim, edge, video.currentTime, video.duration);
   renderTrimUi();
   notify(edge === "start" ? `Clip now starts at ${formatTimeFine(trim.start)}.` : `Clip now ends at ${formatTimeFine(trim.end)}.`);
@@ -344,6 +473,7 @@ function setTrim(edge: Edge) {
 setInBtn.addEventListener("click", () => setTrim("start"));
 setOutBtn.addEventListener("click", () => setTrim("end"));
 resetTrimBtn.addEventListener("click", () => {
+  checkpoint();
   trim = fullTrim(video.duration);
   renderTrimUi();
   notify("Keeping the whole clip.");
@@ -361,11 +491,28 @@ function renderTrimUi() {
 // ---- Zooms -------------------------------------------------------------------
 
 addZoomBtn.addEventListener("click", () => {
-  const before = zooms.length;
-  zooms = addZoom(zooms, video.currentTime, video.duration);
-  if (zooms.length === before) notify("There is already a zoom here. Move the playhead to an empty spot.");
+  const next = addZoom(zooms, video.currentTime, video.duration);
+  if (next.length === zooms.length) {
+    notify("There is already a zoom here. Move the playhead to an empty spot.");
+    return;
+  }
+  checkpoint();
+  zooms = next;
   lastActive = -2;
 });
+
+function removeZoom(i: number) {
+  checkpoint();
+  zooms = zooms.filter((_, j) => j !== i);
+  lastActive = -2;
+}
+
+function removeZoomAtPlayhead() {
+  const i = zoomIndexAt(zooms, video.currentTime);
+  if (i < 0) return notify("No zoom at the playhead.");
+  removeZoom(i);
+  notify("Zoom removed. Press Ctrl/⌘ Z to bring it back.");
+}
 
 canvas.addEventListener("click", (e) => {
   const i = zoomIndexAt(zooms, video.currentTime);
@@ -377,6 +524,7 @@ canvas.addEventListener("click", (e) => {
   const f = fitFrame(canvas, sourceSize(), style.padding);
   const fx = (cx - f.x) / f.width;
   const fy = (cy - f.y) / f.height;
+  checkpoint();
   zooms[i] = { ...zooms[i], focusX: clamp01(fx), focusY: clamp01(fy) };
   notify("Zoom aimed.");
 });
@@ -391,6 +539,7 @@ zoomLane.addEventListener("pointerdown", (e) => {
   if (!grip || !hasVideo || exporting) return;
   e.preventDefault();
   video.pause();
+  checkpoint();
   drag = { index: Number(grip.dataset.index), edge: grip.dataset.edge as Edge, pointerId: e.pointerId };
   zoomLane.setPointerCapture(e.pointerId);
   zoomLane.classList.add("dragging");
@@ -449,14 +598,14 @@ function renderZoomUi() {
       const amount = document.createElement("select");
       amount.setAttribute("aria-label", "Zoom amount");
       for (const v of [1.4, 1.8, 2.4, 3]) amount.add(new Option(`${v}×`, String(v), false, v === z.scale));
-      amount.addEventListener("change", () => (zooms[i] = { ...zooms[i], scale: Number(amount.value) }));
+      amount.addEventListener("change", () => {
+        checkpoint();
+        zooms[i] = { ...zooms[i], scale: Number(amount.value) };
+      });
       const del = document.createElement("button");
       del.type = "button";
       del.textContent = "Remove";
-      del.addEventListener("click", () => {
-        zooms = zooms.filter((_, j) => j !== i);
-        lastActive = -2;
-      });
+      del.addEventListener("click", () => removeZoom(i));
       li.append(label, amount, del);
       return li;
     }),

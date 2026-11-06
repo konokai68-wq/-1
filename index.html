@@ -42,6 +42,14 @@
             <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Playhead" disabled />
           </div>
           <button id="addZoom" class="btn btn-small" type="button" disabled>Add zoom here</button>
+          <div class="history" role="group" aria-label="History">
+            <button id="undo" class="icon-btn" type="button" aria-label="Undo" title="Undo (Ctrl/⌘ Z)" disabled>
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M7.5 5 3.5 9l4 4M4 9h8a4.5 4.5 0 0 1 0 9h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button id="redo" class="icon-btn" type="button" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)" disabled>
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M12.5 5l4 4-4 4M16 9H8a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -91,10 +99,17 @@
           <p class="note" id="zoomEmpty">Move the playhead to a moment worth a closer look, then press Add zoom here.</p>
           <p class="note" id="zoomTip" hidden>Drag the ends of an orange bar on the timeline to make a zoom longer or shorter.</p>
         </fieldset>
+        <button id="showShortcuts" class="link-btn shortcuts-link" type="button">Keyboard shortcuts <kbd>?</kbd></button>
         <p class="privacy">Your video is processed on this device. Panreel has no server and no account.</p>
       </aside>
     </main>
 
+    <dialog class="shortcuts" id="shortcuts" aria-labelledby="shortcutsTitle">
+      <form method="dialog" class="shortcuts-panel">
+        <header><h2 id="shortcutsTitle">Keyboard shortcuts</h2><button class="icon-btn" aria-label="Close">✕</button></header>
+        <dl id="shortcutList"></dl>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     <video id="video" playsinline hidden></video>
     <script type="module" src="/src/main.ts"></script>
