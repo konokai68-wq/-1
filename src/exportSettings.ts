@@ -18,12 +18,19 @@ export const RESOLUTIONS: Resolution[] = [
 export const FRAME_RATES = [30, 60] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 
+export const FORMATS = [
+  { id: "video", label: "Video" },
+  { id: "gif", label: "GIF" },
+] as const;
+export type ExportFormat = (typeof FORMATS)[number]["id"];
+
 export interface ExportSettings {
+  format: ExportFormat;
   resolution: string;
   frameRate: FrameRate;
 }
 
-export const DEFAULT_SETTINGS: ExportSettings = { resolution: "1080", frameRate: 60 };
+export const DEFAULT_SETTINGS: ExportSettings = { format: "video", resolution: "1080", frameRate: 60 };
 
 /**
  * Scale the canvas `base` size so its shorter side is `short` pixels, keeping
@@ -46,7 +53,8 @@ export function sanitizeSettings(raw: unknown): ExportSettings {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const resolution = RESOLUTIONS.some((r) => r.id === o.resolution) ? (o.resolution as string) : DEFAULT_SETTINGS.resolution;
   const frameRate = FRAME_RATES.includes(o.frameRate as FrameRate) ? (o.frameRate as FrameRate) : DEFAULT_SETTINGS.frameRate;
-  return { resolution, frameRate };
+  const format = FORMATS.some((f) => f.id === o.format) ? (o.format as ExportFormat) : DEFAULT_SETTINGS.format;
+  return { format, resolution, frameRate };
 }
 
 export function resolutionById(id: string): Resolution {

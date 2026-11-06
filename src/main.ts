@@ -1,7 +1,8 @@
 import "./style.css";
 import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
-import { FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
+import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
+import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
 import { ASPECTS, BACKDROPS, drawFrame, type Backdrop, type Style } from "./render";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
@@ -45,6 +46,7 @@ const aspectSelect = $<HTMLSelectElement>("aspect");
 const toast = $("toast");
 const resolutionGroup = $("resolution");
 const frameRateGroup = $("frameRate");
+const formatGroup = $("format");
 const exportInfo = $("exportInfo");
 
 const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
@@ -171,6 +173,13 @@ function radio(group: HTMLElement, name: string, value: string, label: string, c
   group.append(el);
 }
 
+for (const f of FORMATS) {
+  radio(formatGroup, "format", f.id, f.label, f.id === settings.format, () => {
+    settings = { ...settings, format: f.id };
+    saveSettings();
+    updateExportInfo();
+  });
+}
 for (const r of RESOLUTIONS) {
   radio(resolutionGroup, "resolution", r.id, r.label, r.id === settings.resolution, () => {
     settings = { ...settings, resolution: r.id };
@@ -192,6 +201,15 @@ function outputSize() {
 }
 
 function updateExportInfo() {
+  const gif = settings.format === "gif";
+  resolutionGroup.hidden = gif;
+  frameRateGroup.hidden = gif;
+  if (!exporting) exportBtn.textContent = gif ? "Export GIF" : "Export video";
+  if (gif) {
+    const g = gifSize({ width: canvas.width, height: canvas.height });
+    exportInfo.textContent = `${g.width} × ${g.height} at ${GIF_FPS} fps, loops forever. For clips up to ${GIF_MAX_SECONDS} s.`;
+    return;
+  }
   const s = outputSize();
   const hint = settings.frameRate === 30 ? " Exports about twice as fast." : "";
   exportInfo.textContent = `${s.width} × ${s.height} at ${settings.frameRate} fps.${hint}`;
@@ -456,8 +474,12 @@ exportBtn.addEventListener("click", async () => {
     exporting.cancel();
     return;
   }
-  exportBtn.textContent = "Cancel export";
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  if (settings.format === "gif") {
+    await exportGifPath(stamp);
+    return;
+  }
+  exportBtn.textContent = "Cancel export";
   let result: { blob: Blob | null; ext: string } | null = null;
   try {
     result = await exportFastPath();
@@ -483,7 +505,7 @@ exportBtn.addEventListener("click", async () => {
     canvas.height = preview.height;
   }
   exporting = null;
-  exportBtn.textContent = "Export video";
+  updateExportInfo();
   if (result.blob) {
     download(result.blob, `panreel-${stamp}.${result.ext}`);
     notify(`Exported ${result.ext.toUpperCase()}. Your video is in your downloads.`);
@@ -491,6 +513,39 @@ exportBtn.addEventListener("click", async () => {
     notify("Export cancelled.");
   }
 });
+
+async function exportGifPath(stamp: string) {
+  if (!sourceBlob) return;
+  if (gifTooLong(trim)) {
+    notify(`GIFs are limited to ${GIF_MAX_SECONDS} s. Trim the clip (I / O keys) or export a video instead.`);
+    return;
+  }
+  exportBtn.textContent = "Cancel export";
+  const { exportGif } = await import("./gifExport");
+  const job = exportGif({
+    source: sourceBlob,
+    size: gifSize({ width: canvas.width, height: canvas.height }),
+    range: trim,
+    draw: (c, frame, frameSize, time) => drawFrame(c, frame, frameSize, style, zooms, time),
+    onProgress: (f) => notify(`Exporting GIF… ${Math.round(f * 100)}%`, true),
+  });
+  exporting = job;
+  let blob: Blob | null = null;
+  try {
+    blob = await job.done;
+  } catch (err) {
+    console.error(err);
+    notify("GIF export failed in this browser. Try exporting a video instead.");
+  }
+  exporting = null;
+  updateExportInfo();
+  if (blob) {
+    download(blob, `panreel-${stamp}.gif`);
+    notify(`Exported GIF (${(blob.size / 1048576).toFixed(1)} MB). It's in your downloads.`);
+  } else if (!toast.textContent?.startsWith("GIF export failed")) {
+    notify("Export cancelled.");
+  }
+}
 
 /** Resolves to null when this browser can't do a WebCodecs export. */
 async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | null> {

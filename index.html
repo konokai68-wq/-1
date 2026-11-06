@@ -17,7 +17,7 @@
       <div class="actions">
         <button id="record" class="btn btn-record" type="button"><span class="dot" aria-hidden="true"></span><span class="label">Record screen</span></button>
         <label class="btn">Open video<input id="file" type="file" accept="video/*" hidden /></label>
-        <button id="export" class="btn btn-primary" type="button" disabled>Export video</button>
+        <button id="export" class="btn btn-primary" type="button" disabled>Export</button>
       </div>
     </header>
 
@@ -68,6 +68,7 @@
         </fieldset>
         <fieldset>
           <legend>Export</legend>
+          <div class="seg seg-2" id="format" role="radiogroup" aria-label="Export format"></div>
           <div class="seg" id="resolution" role="radiogroup" aria-label="Export resolution"></div>
           <div class="seg seg-2" id="frameRate" role="radiogroup" aria-label="Export frame rate"></div>
           <p class="note" id="exportInfo"></p>

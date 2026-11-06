@@ -23,10 +23,13 @@ describe("exportSize", () => {
 
 describe("sanitizeSettings", () => {
   it("keeps valid settings", () => {
-    expect(sanitizeSettings({ resolution: "720", frameRate: 30 })).toEqual({ resolution: "720", frameRate: 30 });
+    expect(sanitizeSettings({ format: "gif", resolution: "720", frameRate: 30 })).toEqual({ format: "gif", resolution: "720", frameRate: 30 });
+  });
+  it("defaults the format to video for settings saved before GIF export existed", () => {
+    expect(sanitizeSettings({ resolution: "720", frameRate: 30 })).toEqual({ format: "video", resolution: "720", frameRate: 30 });
   });
   it("replaces unknown or missing values with defaults", () => {
-    expect(sanitizeSettings({ resolution: "8k", frameRate: 24 })).toEqual(DEFAULT_SETTINGS);
+    expect(sanitizeSettings({ format: "apng", resolution: "8k", frameRate: 24 })).toEqual(DEFAULT_SETTINGS);
     expect(sanitizeSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(sanitizeSettings("junk")).toEqual(DEFAULT_SETTINGS);
   });
