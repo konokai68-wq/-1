@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-06 22:00 JST — webcam bubble
+- Added a Camera section: record the webcam with the screen (second MediaRecorder started together) or add an existing camera clip. The bubble is drawn at render time (`camera.ts`, `drawBubble`), so shape (circle / rounded), size, corner, mirror and visibility stay editable; drag it on the preview to snap to another corner.
+- Exports pull camera frames in time order (`cameraFrames.ts`: Mediabunny CanvasSink, or seeking a hidden <video>); the real-time fallback plays the camera <video> in sync.
+- Checked in headless Chromium with fake devices: record screen + camera → bubble shown; added clip → MP4 (720p) and GIF both show the bubble in step (timestamp overlay matches at 2 s). Tests: 66 passing.
+- Next: cut / speed-up segments, or faster export in a worker.
+
 ## 2026-11-06 18:00 JST — undo / redo and keyboard shortcuts
 - Added undo / redo (toolbar buttons, Ctrl/⌘ Z, Ctrl/⌘ Shift Z or Ctrl Y) for zooms, trim and the frame sliders; a slider drag merges into one step (`history.ts`). Backdrop and export settings are not part of history yet.
 - New keys (`shortcuts.ts`): Z add zoom, Delete remove zoom at playhead, ← / → step 0.1 s (Shift 1 s), Home / End to clip edges, ? opens a shortcuts sheet (`<dialog>`).

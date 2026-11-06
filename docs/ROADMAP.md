@@ -24,7 +24,7 @@ Everything runs locally; no server, no account.
 - [x] Undo / redo (zooms, trim, frame sliders); keyboard shortcuts with a `?` help sheet
 
 ## Phase 3 — Studio features
-- [ ] Webcam bubble (record camera alongside the screen; shape, size, position)
+- [x] Webcam bubble (record camera alongside the screen or add a camera clip; circle / rounded, size, corner, mirror; drag on the preview)
 - [ ] Cut / speed-up segments
 - [ ] Text and arrow annotations
 - [ ] Optional cursor highlight when recording this browser tab
