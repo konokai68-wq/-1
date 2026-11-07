@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-07 09:00 JST — cut segments
+- Added cuts (`cuts.ts`): *Cut here* / X drops 1 s at the playhead; drag the red bar's ends on a new timeline lane; listed in a Cuts panel with the resulting length; Delete removes the cut (or zoom) at the playhead; part of undo / redo.
+- Playback jumps over cuts. WebCodecs export drops cut frames and retimes the rest in Mediabunny's `process` hooks (audio samples too, never overlapping); GIF frames are planned on the output timeline; the real-time fallback relies on the playback skip.
+- Checked in headless Chromium: 6 s clip, cuts 2–3 s and 4–4.5 s → MP4 4.50 s, WebM 4.52 s (audio 4.51 s), GIF 4.53 s, colours on both sides of each cut match the source. Tests: 80 passing.
+- Next: speed-up segments, or faster export in a worker.
+
 ## 2026-11-06 22:00 JST — webcam bubble
 - Added a Camera section: record the webcam with the screen (second MediaRecorder started together) or add an existing camera clip. The bubble is drawn at render time (`camera.ts`, `drawBubble`), so shape (circle / rounded), size, corner, mirror and visibility stay editable; drag it on the preview to snap to another corner.
 - Exports pull camera frames in time order (`cameraFrames.ts`: Mediabunny CanvasSink, or seeking a hidden <video>); the real-time fallback plays the camera <video> in sync.

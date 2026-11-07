@@ -14,11 +14,12 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Smooth zooms**: press *Add zoom here*, click the preview to aim it, choose 1.4×–3×. Zooms ease in and out automatically
 - **Trim** the start and end — set them to the playhead with a button or the <kbd>I</kbd> / <kbd>O</kbd> keys
 - **Resize zooms** by dragging the ends of their bars on the timeline
+- **Cut out** the boring parts: press *Cut here* (or <kbd>X</kbd>) and drag the red bar's ends to choose what to remove. Playback skips cuts and every export leaves them out, with the sound kept in sync
 - **Export** to MP4 (H.264) or WebM with WebCodecs: every frame is decoded, styled and re-encoded directly, so the result is frame-accurate and you don't have to watch it play. MP4 is used when your browser can encode H.264 (and AAC for the soundtrack); otherwise Panreel picks WebM so the audio is never dropped. Browsers without WebCodecs fall back to real-time WebM recording
 - **GIF export** for short clips (up to 30 s): 480p, 15 fps, loops forever — ready to drop into a README, pull request or chat
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser
 - **Webcam bubble**: tick *Record my camera with the screen* to record your face alongside, or add an existing camera clip to any video. Choose a circle or rounded square, size, corner (or drag it on the preview) and mirroring — it's kept separate until export, so you can restyle it any time
-- **Undo / redo** for zooms, trim and frame settings (<kbd>Ctrl/⌘ Z</kbd>, <kbd>Ctrl/⌘ Shift Z</kbd>)
+- **Undo / redo** for zooms, cuts, trim and frame settings (<kbd>Ctrl/⌘ Z</kbd>, <kbd>Ctrl/⌘ Shift Z</kbd>)
 
 ## Keyboard shortcuts
 
@@ -29,7 +30,8 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 | <kbd>Home</kbd> <kbd>End</kbd> | Jump to the clip start / end |
 | <kbd>I</kbd> <kbd>O</kbd> | Set the clip start / end to the playhead |
 | <kbd>Z</kbd> | Add a zoom at the playhead |
-| <kbd>Delete</kbd> | Remove the zoom at the playhead |
+| <kbd>X</kbd> | Cut 1 s at the playhead |
+| <kbd>Delete</kbd> | Remove the cut or zoom at the playhead |
 | <kbd>Ctrl/⌘ Z</kbd> · <kbd>Ctrl/⌘ Shift Z</kbd> | Undo · Redo |
 | <kbd>?</kbd> | Show all shortcuts |
 
@@ -52,7 +54,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: cut / speed-up segments, text and arrow annotations, and saving projects locally.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: speed-up segments, text and arrow annotations, and saving projects locally.
 
 ## Credits
 
