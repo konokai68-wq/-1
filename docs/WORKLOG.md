@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-07 18:00 JST — text callouts
+- Added text callouts (`texts.ts`: add / wrap / layout / hit-test, pure and tested): *Add text* / T puts a 3 s caption at the playhead and focuses its text box; Dark / Light / Blue looks, S / M / L sizes; drag it on the preview to move it; a violet fourth timeline lane with drag grips; Delete and undo / redo cover it.
+- Drawn by `drawTexts` in `render.ts` above the camera bubble (rounded pill, 0.25 s fade and rise), so the preview, WebCodecs, GIF and real-time exports all get it.
+- Checked in headless Chromium: 6 s clip, text at 0–3 s dragged to the top → preview pixels follow the drag, undo puts it back; 720p/30 fps MP4 shows the pill at 1.5 s, fading at 0.05 s / 2.9 s, gone at 4 s. Tests: 99 passing.
+- Next: arrow annotations, or save / load projects (IndexedDB).
+
 ## 2026-11-07 13:00 JST — speed-up segments
 - Added speed-ups (`cuts.ts`: `SpeedSpan`, `pieces`, and the time maps now take speeds): *Speed up* / S adds 2 s at 4× at the playhead; 2× / 4× / 8× per segment in a new Speed-ups panel; teal bars on a third timeline lane with drag grips; Delete and undo / redo cover them.
 - Preview sets `playbackRate` (muted) inside speed-ups; the real-time fallback follows. WebCodecs export retimes frames onto the frame grid (`frameSlotter`, extra frames dropped) and turns sped-up audio into silence of the squeezed length; GIF frames are planned on the output timeline.
