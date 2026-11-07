@@ -19,6 +19,7 @@ describe("actionFor", () => {
     expect(actionFor({ key: "X" })).toBe("addCut");
     expect(actionFor({ key: "s" })).toBe("addSpeed");
     expect(actionFor({ key: "T" })).toBe("addText");
+    expect(actionFor({ key: "a" })).toBe("arrow");
     expect(actionFor({ key: "?", shiftKey: true })).toBe("help");
   });
 

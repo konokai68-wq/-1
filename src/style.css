@@ -226,7 +226,10 @@ select {
   border: 1px solid var(--line); background: transparent; color: var(--ink); width: 100%; box-sizing: border-box;
 }
 .text-list input[type="text"]:focus { outline: 2px solid var(--text); outline-offset: -1px; }
-.text-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; }
+.text-row { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 6px; align-items: center; }
+.zoom-list .arrow-toggle { border: 1px solid var(--line); border-radius: 5px; font-size: 0.8125rem; }
+.zoom-list .arrow-toggle::before { content: "↗ "; }
+.zoom-list .arrow-toggle[aria-pressed="true"] { border-color: var(--text); color: var(--text); background: color-mix(in srgb, var(--text) 12%, transparent); }
 .text-time { text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .cut-len { color: var(--ink-soft); font-variant-numeric: tabular-nums; }

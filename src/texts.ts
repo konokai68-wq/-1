@@ -3,11 +3,18 @@ import type { Size } from "./layout";
 /** Look of a text callout drawn over the video. */
 export type TextLook = "dark" | "light" | "accent";
 
-export const TEXT_LOOKS: readonly { id: TextLook; label: string; fill: string; ink: string }[] = [
-  { id: "dark", label: "Dark", fill: "rgba(14, 18, 28, 0.86)", ink: "#ffffff" },
-  { id: "light", label: "Light", fill: "rgba(255, 255, 255, 0.94)", ink: "#141a26" },
-  { id: "accent", label: "Blue", fill: "#3150e8", ink: "#ffffff" },
+/** `arrow` is the solid colour of a callout's arrow; `ink` doubles as its outline. */
+export const TEXT_LOOKS: readonly { id: TextLook; label: string; fill: string; ink: string; arrow: string }[] = [
+  { id: "dark", label: "Dark", fill: "rgba(14, 18, 28, 0.86)", ink: "#ffffff", arrow: "#141a26" },
+  { id: "light", label: "Light", fill: "rgba(255, 255, 255, 0.94)", ink: "#141a26", arrow: "#ffffff" },
+  { id: "accent", label: "Blue", fill: "#3150e8", ink: "#ffffff", arrow: "#3150e8" },
 ];
+
+/** A point as a fraction of the canvas (0–1). */
+export interface Point {
+  x: number;
+  y: number;
+}
 
 /** A text callout shown from `start` to `end` (source time, seconds). */
 export interface TextNote {
@@ -20,6 +27,8 @@ export interface TextNote {
   /** Font size as a fraction of the canvas's shorter side. */
   size: number;
   look: TextLook;
+  /** Optional arrow from the callout to this tip. With empty text, a bare arrow. */
+  arrow?: Point;
 }
 
 export const DEFAULT_TEXT_LENGTH = 3;
@@ -139,6 +148,92 @@ export function textHit(
 /** Keep a dragged callout's centre on the canvas. */
 export function moveText(note: TextNote, x: number, y: number): TextNote {
   return { ...note, x: clamp(x, 0, 1), y: clamp(y, 0, 1) };
+}
+
+/**
+ * Where a new arrow points: a quarter of the canvas from the callout, towards
+ * the middle of the picture (up for callouts in the lower half, down otherwise).
+ */
+export function defaultArrowTip(note: TextNote): Point {
+  const dy = note.y > 0.5 ? -0.28 : 0.28;
+  const dx = note.x < 0.35 ? 0.15 : note.x > 0.65 ? -0.15 : 0.08;
+  return { x: clamp(note.x + dx, 0.03, 0.97), y: clamp(note.y + dy, 0.03, 0.97) };
+}
+
+/** Turn a callout's arrow on (pointing at `defaultArrowTip`) or off. */
+export function toggleArrow(note: TextNote): TextNote {
+  if (note.arrow) {
+    const rest = { ...note };
+    delete rest.arrow;
+    return rest;
+  }
+  return { ...note, arrow: defaultArrowTip(note) };
+}
+
+/** Keep a dragged arrow tip on the canvas. */
+export function moveArrowTip(note: TextNote, x: number, y: number): TextNote {
+  return { ...note, arrow: { x: clamp(x, 0, 1), y: clamp(y, 0, 1) } };
+}
+
+export interface ArrowGeometry {
+  /** Tail of the shaft (just outside the callout's pill), in canvas pixels. */
+  from: Point;
+  /** Where the shaft meets the head. */
+  neck: Point;
+  /** The head triangle: tip, then the two barbs. */
+  head: [Point, Point, Point];
+  /** Shaft thickness in pixels. */
+  width: number;
+}
+
+/**
+ * Shape of a callout's arrow on a canvas of `canvas` size. The tail starts on
+ * the edge of `box` (the pill, or null when there is no pill: then it starts at
+ * the callout's centre). Null when there is no arrow or the tip is too close
+ * to draw one.
+ */
+export function arrowGeometry(canvas: Size, note: TextNote, box: TextLayout["box"] | null): ArrowGeometry | null {
+  if (!note.arrow) return null;
+  const short = Math.min(canvas.width, canvas.height);
+  const fontSize = Math.max(8, note.size * short);
+  const width = Math.max(2, fontSize * 0.2);
+  const headLength = width * 4.2;
+  const tip = { x: note.arrow.x * canvas.width, y: note.arrow.y * canvas.height };
+  const c = box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : { x: note.x * canvas.width, y: note.y * canvas.height };
+  const dx = tip.x - c.x;
+  const dy = tip.y - c.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1e-6) return null;
+  const ux = dx / dist;
+  const uy = dy / dist;
+  // Distance from the centre to the pill's edge along the arrow, plus a small gap.
+  let start = 0;
+  if (box) {
+    const tx = Math.abs(ux) > 1e-9 ? box.width / 2 / Math.abs(ux) : Infinity;
+    const ty = Math.abs(uy) > 1e-9 ? box.height / 2 / Math.abs(uy) : Infinity;
+    start = Math.min(tx, ty) + fontSize * 0.3;
+  }
+  if (dist - start < headLength * 1.5) return null;
+  const from = { x: c.x + ux * start, y: c.y + uy * start };
+  const base = { x: tip.x - ux * headLength, y: tip.y - uy * headLength };
+  const half = headLength * 0.62;
+  const head: [Point, Point, Point] = [
+    tip,
+    { x: base.x - uy * half, y: base.y + ux * half },
+    { x: base.x + uy * half, y: base.y - ux * half },
+  ];
+  // Stop the shaft inside the head so its round cap never pokes past the barbs.
+  const neck = { x: tip.x - ux * headLength * 0.7, y: tip.y - uy * headLength * 0.7 };
+  return { from, neck, head, width };
+}
+
+/** Index of the callout whose arrow tip is under canvas point (px, py) at `t`, or -1. */
+export function arrowTipHit(notes: readonly TextNote[], t: number, canvas: Size, px: number, py: number): number {
+  const i = textIndexAt(notes, t);
+  const tip = i >= 0 ? notes[i].arrow : undefined;
+  if (!tip) return -1;
+  const reach = Math.max(12, Math.min(canvas.width, canvas.height) * 0.035);
+  return Math.hypot(px - tip.x * canvas.width, py - tip.y * canvas.height) <= reach ? i : -1;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

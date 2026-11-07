@@ -4,7 +4,20 @@ import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type R
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
 import { ASPECTS, BACKDROPS, canvasMeasure, drawFrame, type Backdrop, type CameraLayer, type Style } from "./render";
-import { MIN_TEXT_LENGTH, TEXT_LOOKS, TEXT_SIZES, addText, moveText, textHit, textIndexAt, type TextLook, type TextNote } from "./texts";
+import {
+  MIN_TEXT_LENGTH,
+  TEXT_LOOKS,
+  TEXT_SIZES,
+  addText,
+  arrowTipHit,
+  moveArrowTip,
+  moveText,
+  textHit,
+  textIndexAt,
+  toggleArrow,
+  type TextLook,
+  type TextNote,
+} from "./texts";
 import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShape, type Corner } from "./camera";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
@@ -325,7 +338,7 @@ function snapshot(): EditState {
     trim: { ...trim },
     cuts: cuts.map((c) => ({ ...c })),
     speeds: speeds.map((s) => ({ ...s })),
-    texts: texts.map((n) => ({ ...n })),
+    texts: texts.map((n) => ({ ...n, ...(n.arrow ? { arrow: { ...n.arrow } } : {}) })),
     frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
   };
 }
@@ -513,9 +526,13 @@ function canvasPoint(e: MouseEvent) {
 let bubbleDrag: { pointerId: number; moved: boolean } | null = null;
 let suppressClick = false;
 
-// Drag a text callout on the preview to move it (it is drawn above the bubble).
-let textDrag: { pointerId: number; index: number; dx: number; dy: number; moved: boolean } | null = null;
+// Drag a text callout (or its arrow tip) on the preview to move it (it is drawn above the bubble).
+let textDrag: { pointerId: number; index: number; part: "box" | "tip"; dx: number; dy: number; moved: boolean } | null = null;
 const measure = canvasMeasure(document.createElement("canvas").getContext("2d")!);
+
+function tipUnder(x: number, y: number) {
+  return hasVideo ? arrowTipHit(texts, video.currentTime, canvas, x, y) : -1;
+}
 
 function textUnder(x: number, y: number) {
   return hasVideo ? textHit(texts, video.currentTime, canvas, x, y, measure) : -1;
@@ -523,7 +540,8 @@ function textUnder(x: number, y: number) {
 
 canvas.addEventListener("pointerdown", (e) => {
   const p = canvasPoint(e);
-  const i = exporting ? -1 : textUnder(p.x, p.y);
+  const tip = exporting ? -1 : tipUnder(p.x, p.y);
+  const i = tip >= 0 ? tip : exporting ? -1 : textUnder(p.x, p.y);
   if (i < 0) return;
   e.preventDefault();
   e.stopImmediatePropagation();
@@ -531,14 +549,15 @@ canvas.addEventListener("pointerdown", (e) => {
   // Leave the text box so keys (Ctrl/⌘ Z, Delete) act on the editor again.
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   const n = texts[i];
-  textDrag = { pointerId: e.pointerId, index: i, dx: n.x * canvas.width - p.x, dy: n.y * canvas.height - p.y, moved: false };
+  const at = tip >= 0 && n.arrow ? n.arrow : n;
+  textDrag = { pointerId: e.pointerId, index: i, part: tip >= 0 ? "tip" : "box", dx: at.x * canvas.width - p.x, dy: at.y * canvas.height - p.y, moved: false };
   canvas.setPointerCapture(e.pointerId);
   canvas.classList.add("moving-text");
 });
 canvas.addEventListener("pointermove", (e) => {
   const p = canvasPoint(e);
   if (!textDrag) {
-    canvas.classList.toggle("over-text", textUnder(p.x, p.y) >= 0);
+    canvas.classList.toggle("over-text", tipUnder(p.x, p.y) >= 0 || textUnder(p.x, p.y) >= 0);
     return;
   }
   if (e.pointerId !== textDrag.pointerId) return;
@@ -546,7 +565,8 @@ canvas.addEventListener("pointermove", (e) => {
   if (!textDrag.moved) checkpoint();
   textDrag.moved = true;
   const i = textDrag.index;
-  texts[i] = moveText(texts[i], (p.x + textDrag.dx) / canvas.width, (p.y + textDrag.dy) / canvas.height);
+  const move = textDrag.part === "tip" ? moveArrowTip : moveText;
+  texts[i] = move(texts[i], (p.x + textDrag.dx) / canvas.width, (p.y + textDrag.dy) / canvas.height);
 });
 const endTextDrag = (e: PointerEvent) => {
   if (!textDrag || e.pointerId !== textDrag.pointerId) return;
@@ -659,6 +679,7 @@ function runAction(action: Action) {
     case "addCut": return addCutBtn.click();
     case "addSpeed": return addSpeedBtn.click();
     case "addText": return addTextBtn.click();
+    case "arrow": return arrowAtPlayhead();
     case "remove": return removeAtPlayhead();
     case "back": return step(-0.1);
     case "forward": return step(0.1);
@@ -1077,6 +1098,26 @@ addTextBtn.addEventListener("click", () => {
   notify("Text added for 3 s. Type your words, drag the text on the preview to move it.");
 });
 
+/** A: toggle the arrow on the callout at the playhead, or add a callout with an arrow. */
+function arrowAtPlayhead() {
+  if (!hasVideo) return;
+  let i = textIndexAt(texts, video.currentTime);
+  if (i < 0) {
+    const next = addText(texts, video.currentTime, video.duration, "Look here");
+    if (next.length === texts.length) return notify("No room for text here. Move the playhead.");
+    checkpoint();
+    const added = next.find((n) => !texts.includes(n))!;
+    texts = next;
+    i = texts.indexOf(added);
+  } else {
+    checkpoint();
+  }
+  video.pause();
+  texts[i] = toggleArrow(texts[i]);
+  renderTextUi();
+  notify(texts[i].arrow ? "Arrow added. Drag its tip on the preview to point at something." : "Arrow removed.");
+}
+
 function removeText(i: number) {
   checkpoint();
   texts = texts.filter((_, j) => j !== i);
@@ -1139,13 +1180,28 @@ function renderTextUi() {
         checkpoint();
         texts[i] = { ...texts[i], size: Number(size.value) };
       });
+      const arrow = document.createElement("button");
+      arrow.type = "button";
+      arrow.className = "arrow-toggle";
+      arrow.textContent = "Arrow";
+      arrow.title = "Point at something with an arrow (A). Drag its tip on the preview.";
+      arrow.setAttribute("aria-pressed", String(Boolean(n.arrow)));
+      arrow.addEventListener("click", () => {
+        checkpoint();
+        texts[i] = toggleArrow(texts[i]);
+        arrow.setAttribute("aria-pressed", String(Boolean(texts[i].arrow)));
+        if (textIndexAt(texts, video.currentTime) !== i) {
+          video.pause();
+          video.currentTime = Math.min(texts[i].end - 0.05, texts[i].start + 0.5);
+        }
+      });
       const del = document.createElement("button");
       del.type = "button";
       del.textContent = "Remove";
       del.addEventListener("click", () => removeText(i));
       const row = document.createElement("div");
       row.className = "text-row";
-      row.append(time, look, size, del);
+      row.append(time, look, size, arrow, del);
       li.append(input, row);
       return li;
     }),

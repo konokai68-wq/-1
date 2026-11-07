@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TEXT_LENGTH,
   addText,
+  arrowGeometry,
+  arrowTipHit,
+  defaultArrowTip,
+  moveArrowTip,
+  toggleArrow,
   layoutText,
   moveText,
   textHit,
@@ -111,5 +116,60 @@ describe("textHit / moveText", () => {
     const m = moveText(note(), 1.4, -0.2);
     expect(m.x).toBe(1);
     expect(m.y).toBe(0);
+  });
+});
+
+describe("arrows", () => {
+  const canvas = { width: 1920, height: 1080 };
+  const base = { start: 0, end: 3, text: "Hi", x: 0.5, y: 0.86, size: 0.05, look: "dark" as const };
+
+  it("toggles an arrow pointing up from a low callout, and off again", () => {
+    const on = toggleArrow(base);
+    expect(on.arrow!.y).toBeLessThan(base.y);
+    expect(on.arrow!.x).toBeGreaterThan(0);
+    const off = toggleArrow(on);
+    expect(off.arrow).toBeUndefined();
+    expect("arrow" in off).toBe(false);
+  });
+
+  it("points down from a high callout and inwards from the edges", () => {
+    const tip = defaultArrowTip({ ...base, x: 0.1, y: 0.1 });
+    expect(tip.y).toBeGreaterThan(0.1);
+    expect(tip.x).toBeGreaterThan(0.1);
+    expect(defaultArrowTip({ ...base, x: 0.9 }).x).toBeLessThan(0.9);
+  });
+
+  it("starts the shaft outside the pill and ends at the tip", () => {
+    const note = { ...base, arrow: { x: 0.5, y: 0.3 } };
+    const box = { x: 860, y: 880, width: 200, height: 100 };
+    const g = arrowGeometry(canvas, note, box)!;
+    expect(g.head[0]).toEqual({ x: 960, y: 0.3 * 1080 });
+    expect(g.from.x).toBeCloseTo(960);
+    expect(g.from.y).toBeLessThan(box.y);
+    // The neck sits between the tail and the tip.
+    expect(g.neck.y).toBeGreaterThan(g.head[0].y);
+    expect(g.neck.y).toBeLessThan(g.from.y);
+    // Barbs are symmetric about the shaft.
+    expect(g.head[1].y).toBeCloseTo(g.head[2].y);
+    expect(g.head[1].x - 960).toBeCloseTo(960 - g.head[2].x);
+  });
+
+  it("starts at the callout centre without a pill and skips tips that are too close", () => {
+    const bare = arrowGeometry(canvas, { ...base, text: "", arrow: { x: 0.8, y: 0.86 } }, null)!;
+    expect(bare.from).toEqual({ x: 960, y: 0.86 * 1080 });
+    expect(arrowGeometry(canvas, { ...base, arrow: { x: 0.5, y: 0.85 } }, { x: 860, y: 880, width: 200, height: 100 })).toBeNull();
+    expect(arrowGeometry(canvas, base, null)).toBeNull();
+  });
+
+  it("hits the tip only while the callout shows", () => {
+    const notes = [{ ...base, arrow: { x: 0.25, y: 0.25 } }];
+    expect(arrowTipHit(notes, 1, canvas, 480 + 10, 270 - 10)).toBe(0);
+    expect(arrowTipHit(notes, 1, canvas, 700, 270)).toBe(-1);
+    expect(arrowTipHit(notes, 4, canvas, 480, 270)).toBe(-1);
+    expect(arrowTipHit([base], 1, canvas, 480, 270)).toBe(-1);
+  });
+
+  it("keeps a dragged tip on the canvas", () => {
+    expect(moveArrowTip(base, 1.4, -0.2).arrow).toEqual({ x: 1, y: 0 });
   });
 });

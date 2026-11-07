@@ -1,6 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, fitFrame, sourceWindow, type Size, type ZoomSegment } from "./layout";
-import { TEXT_LOOKS, layoutText, textIndexAt, textOpacity, type TextNote } from "./texts";
+import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
 export interface GradientBackdrop {
   kind: "gradient";
@@ -118,21 +118,28 @@ export function canvasMeasure(ctx: CanvasRenderingContext2D) {
   };
 }
 
-/** Draw the text callout shown at `time`: a pill that fades and rises in. */
+/** Draw the text callout shown at `time`: an optional arrow, then a pill that fades and rises in. */
 export function drawTexts(ctx: CanvasRenderingContext2D, texts: readonly TextNote[], time: number): void {
   const i = textIndexAt(texts, time);
   if (i < 0) return;
   const note = texts[i];
   const alpha = textOpacity(note, time);
-  if (alpha <= 0 || !note.text.trim()) return;
+  const hasText = Boolean(note.text.trim());
+  if (alpha <= 0 || (!hasText && !note.arrow)) return;
   const { width, height } = ctx.canvas;
   ctx.save();
   const l = layoutText({ width, height }, note, canvasMeasure(ctx));
   const look = TEXT_LOOKS.find((k) => k.id === note.look) ?? TEXT_LOOKS[0];
+  ctx.globalAlpha = alpha;
+  const arrow = arrowGeometry({ width, height }, note, hasText ? l.box : null);
+  if (arrow) drawArrow(ctx, arrow, look.arrow, look.ink);
+  if (!hasText) {
+    ctx.restore();
+    return;
+  }
   const rise = (1 - alpha) * l.fontSize * 0.35;
   const { x, y: y0, width: w, height: h } = l.box;
   const y = y0 + rise;
-  ctx.globalAlpha = alpha;
   ctx.shadowColor = "rgba(8, 14, 30, 0.35)";
   ctx.shadowBlur = l.fontSize * 0.5;
   ctx.shadowOffsetY = l.fontSize * 0.12;
@@ -146,6 +153,40 @@ export function drawTexts(ctx: CanvasRenderingContext2D, texts: readonly TextNot
   ctx.textBaseline = "middle";
   const top = y + (h - l.lines.length * l.lineHeight) / 2;
   l.lines.forEach((line, n) => ctx.fillText(line, x + w / 2, top + (n + 0.5) * l.lineHeight));
+  ctx.restore();
+}
+
+/** A callout arrow: a thin outline in `outline`, then shaft and head in `color`. */
+function drawArrow(ctx: CanvasRenderingContext2D, a: ArrowGeometry, color: string, outline: string): void {
+  const rim = Math.max(1, a.width * 0.35);
+  const path = (extra: number) => {
+    ctx.lineWidth = a.width + extra;
+    ctx.beginPath();
+    ctx.moveTo(a.from.x, a.from.y);
+    ctx.lineTo(a.neck.x, a.neck.y);
+    ctx.stroke();
+    ctx.lineWidth = extra || 0.01;
+    ctx.beginPath();
+    ctx.moveTo(a.head[0].x, a.head[0].y);
+    ctx.lineTo(a.head[1].x, a.head[1].y);
+    ctx.lineTo(a.head[2].x, a.head[2].y);
+    ctx.closePath();
+    if (extra) ctx.stroke();
+    ctx.fill();
+  };
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowColor = "rgba(8, 14, 30, 0.35)";
+  ctx.shadowBlur = a.width * 2.5;
+  ctx.shadowOffsetY = a.width * 0.6;
+  ctx.strokeStyle = outline;
+  ctx.fillStyle = outline;
+  path(rim * 2);
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  path(0);
   ctx.restore();
 }
 
