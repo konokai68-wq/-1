@@ -21,6 +21,8 @@ import {
 import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShape, type Corner } from "./camera";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
+import { editSummary, sanitizeProject, timeAgo, type ProjectData, type SavedBackdrop } from "./project";
+import { clearProject, loadProject, saveMedia, saveMeta, type SavedProject } from "./projectStore";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
 import {
   MIN_CUT_LENGTH,
@@ -107,6 +109,10 @@ const camMirror = $<HTMLInputElement>("camMirror");
 const camRemove = $<HTMLButtonElement>("camRemove");
 const camFile = $<HTMLInputElement>("camFile");
 const camAddNote = $("camAddNote");
+const resumeBox = $("resume");
+const resumeBtn = $<HTMLButtonElement>("resumeBtn");
+const discardBtn = $<HTMLButtonElement>("discardBtn");
+const resumeInfo = $("resumeInfo");
 
 const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
 let zooms: ZoomSegment[] = [];
@@ -119,6 +125,10 @@ let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
 let sourceBlob: Blob | null = null;
 let cameraBlob: Blob | null = null;
+let backdropBlob: Blob | null = null;
+let sourceName = "Untitled";
+/** Bumped whenever a video or the backdrop image changes, so autosave rewrites the Blobs. */
+let mediaVersion = 0;
 const bubble: Bubble = { ...DEFAULT_BUBBLE };
 
 // ---- Rendering -------------------------------------------------------------
@@ -211,6 +221,8 @@ async function useBackdropImage(file: Blob) {
   }
   if (backdropUrl) URL.revokeObjectURL(backdropUrl);
   backdropUrl = url;
+  backdropBlob = file;
+  mediaVersion++;
   imageThumb.style.backgroundImage = `url("${url}")`;
   setBackdrop(
     { kind: "image", image: img, size: { width: img.naturalWidth, height: img.naturalHeight }, blur: Number(bgBlur.value) },
@@ -392,10 +404,13 @@ redoBtn.addEventListener("click", redo);
 
 // ---- Loading media -----------------------------------------------------------
 
-async function open(blob: Blob, camera: Blob | null = null) {
+async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): Promise<boolean> {
   try {
     await loadVideo(video, blob);
     sourceBlob = blob;
+    sourceName = name;
+    mediaVersion++;
+    resumeBox.hidden = true;
     await setCamera(camera);
     hasVideo = true;
     zooms = [];
@@ -413,14 +428,16 @@ async function open(blob: Blob, camera: Blob | null = null) {
     renderSpeedUi();
     renderTextUi();
     notify(`Loaded a ${formatTime(video.duration)} clip. Add zooms, pick a backdrop, then export.`);
+    return true;
   } catch (err) {
     notify((err as Error).message);
+    return false;
   }
 }
 
 fileInput.addEventListener("change", () => {
   const f = fileInput.files?.[0];
-  if (f) void open(f);
+  if (f) void open(f, null, f.name);
   fileInput.value = "";
 });
 
@@ -435,7 +452,7 @@ canvasWrap.addEventListener("drop", (e) => {
   const files = [...(e.dataTransfer?.files ?? [])];
   const f = files.find((x) => x.type.startsWith("video/"));
   const img = files.find((x) => x.type.startsWith("image/"));
-  if (f) void open(f);
+  if (f) void open(f, null, f.name);
   else if (img) void useBackdropImage(img);
   else notify("Drop a video (WebM or MP4) to edit, or an image to use as the backdrop.");
 });
@@ -459,6 +476,7 @@ async function setCamera(blob: Blob | null) {
   }
   camControls.hidden = !cameraBlob;
   camAddNote.hidden = !!cameraBlob;
+  mediaVersion++;
 }
 
 const SHAPES: { id: BubbleShape; label: string }[] = [
@@ -628,7 +646,7 @@ recordBtn.addEventListener("click", async () => {
   const [blob, camera] = await Promise.all([recording.done, recording.camera]);
   recording = null;
   setRecording(false);
-  await open(blob, camera);
+  await open(blob, camera, `Screen recording ${new Date().toLocaleString()}`);
 });
 
 function setRecording(on: boolean) {
@@ -1348,6 +1366,138 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
   console.info(`Exported in ${((performance.now() - started) / 1000).toFixed(1)} s`);
   return { blob, ext: job.extension };
 }
+
+// ---- Autosave / resume ------------------------------------------------------
+
+const FRAME_DEFAULTS = { padding: style.padding, radius: style.radius, shadow: style.shadow };
+const PROJECT_DEFAULTS = { aspect: ASPECTS[0].id, bubble: DEFAULT_BUBBLE, frame: FRAME_DEFAULTS };
+
+function savedBackdrop(): SavedBackdrop {
+  const b = style.backdrop;
+  if (b.kind === "gradient") return { kind: "gradient", id: b.id };
+  if (b.kind === "solid") return { kind: "solid", color: b.color };
+  return { kind: "image", blur: b.blur };
+}
+
+function projectData(): ProjectData {
+  const s = snapshot();
+  return {
+    version: 1,
+    name: sourceName,
+    duration: video.duration,
+    aspect: aspectSelect.value,
+    frame: s.frame,
+    backdrop: savedBackdrop(),
+    bubble: { ...bubble },
+    zooms: s.zooms,
+    trim: s.trim,
+    cuts: s.cuts,
+    speeds: s.speeds,
+    texts: s.texts,
+  };
+}
+
+let savedJson = "";
+let savedMediaVersion = -1;
+let saving = false;
+let saveFailed = false;
+
+/** Write the project to IndexedDB when something changed since the last save. */
+async function autosave() {
+  if (!hasVideo || !sourceBlob || saving || !Number.isFinite(video.duration)) return;
+  const json = JSON.stringify(projectData());
+  const media = mediaVersion;
+  if (json === savedJson && media === savedMediaVersion) return;
+  saving = true;
+  try {
+    if (media !== savedMediaVersion) await saveMedia({ source: sourceBlob, camera: cameraBlob, backdrop: backdropBlob });
+    await saveMeta(JSON.parse(json));
+    savedJson = json;
+    savedMediaVersion = media;
+    saveFailed = false;
+  } catch {
+    if (!saveFailed) notify("This browser could not keep a copy of the project (storage full or blocked). Export to keep your work.");
+    saveFailed = true;
+  } finally {
+    saving = false;
+  }
+}
+window.setInterval(() => void autosave(), 1500);
+// Try once more when the tab is hidden or closed.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") void autosave();
+});
+
+function applyBackdrop(b: SavedBackdrop, image: Blob | null): Promise<void> | void {
+  if (b.kind === "solid") {
+    solidColor.value = b.color;
+    return setBackdrop({ kind: "solid", color: b.color }, solidPick);
+  }
+  if (b.kind === "image" && image) {
+    bgBlur.value = String(b.blur);
+    return useBackdropImage(image);
+  }
+  const i = Math.max(0, BACKDROPS.findIndex((g) => b.kind === "gradient" && g.id === b.id));
+  setBackdrop(BACKDROPS[i], swatches.querySelectorAll(".swatch")[i]);
+}
+
+function applyBubble(b: Bubble) {
+  Object.assign(bubble, b);
+  camShow.checked = b.visible;
+  camMirror.checked = b.mirror;
+  camSize.value = String(b.size);
+  camShape.querySelectorAll<HTMLInputElement>("input").forEach((i) => (i.checked = i.value === b.shape));
+  setCorner(b.corner);
+}
+
+let pending: SavedProject | null = null;
+
+async function resume() {
+  if (!pending) return;
+  const saved = pending;
+  const p = sanitizeProject(saved.data, PROJECT_DEFAULTS);
+  if (!p) return discard();
+  resumeBtn.disabled = true;
+  const ok = await open(saved.media.source, saved.media.camera, p.name);
+  resumeBtn.disabled = false;
+  if (!ok) return;
+  pending = null;
+  const a = ASPECTS.find((x) => x.id === p.aspect) ?? ASPECTS[0];
+  aspectSelect.value = a.id;
+  canvas.width = a.size.width;
+  canvas.height = a.size.height;
+  updateExportInfo();
+  await applyBackdrop(p.backdrop, saved.media.backdrop);
+  applyBubble(p.bubble);
+  restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, frame: p.frame });
+  // Re-saving the same Blobs is wasted work: they are already stored.
+  savedMediaVersion = mediaVersion;
+  savedJson = JSON.stringify(projectData());
+  notify(`Resumed “${p.name}”. Your edits are saved in this browser as you go.`);
+}
+
+async function discard() {
+  pending = null;
+  resumeBox.hidden = true;
+  try {
+    await clearProject();
+  } catch {
+    // Nothing to clear, or storage is blocked: either way there is no project to offer.
+  }
+}
+
+resumeBtn.addEventListener("click", () => void resume());
+discardBtn.addEventListener("click", () => void discard());
+
+void loadProject().then((saved) => {
+  if (!saved || hasVideo) return;
+  const p = sanitizeProject(saved.data, PROJECT_DEFAULTS);
+  if (!p) return;
+  pending = saved;
+  const edits = editSummary(p);
+  resumeInfo.textContent = `${p.name} · ${formatTime(p.duration)}${edits ? ` · ${edits}` : ""} · saved ${timeAgo(saved.savedAt, Date.now())}`;
+  resumeBox.hidden = false;
+});
 
 // ---- Helpers -----------------------------------------------------------------
 
