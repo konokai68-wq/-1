@@ -14,7 +14,9 @@ describe("actionFor", () => {
     expect(actionFor({ key: "o" })).toBe("setOut");
     expect(actionFor({ key: "z" })).toBe("addZoom");
     expect(actionFor({ key: " " })).toBe("play");
-    expect(actionFor({ key: "Backspace" })).toBe("removeZoom");
+    expect(actionFor({ key: "Backspace" })).toBe("remove");
+    expect(actionFor({ key: "x" })).toBe("addCut");
+    expect(actionFor({ key: "X" })).toBe("addCut");
     expect(actionFor({ key: "?", shiftKey: true })).toBe("help");
   });
 

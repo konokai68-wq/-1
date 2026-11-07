@@ -8,6 +8,7 @@ import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShap
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
+import { MIN_CUT_LENGTH, addCut, cutIndexAt, keptDuration, skipCuts, type Span } from "./cuts";
 import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -30,6 +31,11 @@ const zoomLane = $("zoomLane");
 const zoomList = $<HTMLUListElement>("zoomList");
 const zoomEmpty = $("zoomEmpty");
 const zoomTip = $("zoomTip");
+const addCutBtn = $<HTMLButtonElement>("addCut");
+const cutLane = $("cutLane");
+const cutList = $<HTMLUListElement>("cutList");
+const cutEmpty = $("cutEmpty");
+const cutResult = $("cutResult");
 const cutBefore = $("cutBefore");
 const cutAfter = $("cutAfter");
 const trimStartLabel = $("trimStart");
@@ -71,6 +77,7 @@ const camAddNote = $("camAddNote");
 const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
+let cuts: Span[] = [];
 let hasVideo = false;
 let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
@@ -279,6 +286,7 @@ const FRAME_KEYS = ["padding", "radius", "shadow"] as const;
 interface EditState {
   zooms: ZoomSegment[];
   trim: Trim;
+  cuts: Span[];
   frame: Pick<Style, (typeof FRAME_KEYS)[number]>;
 }
 
@@ -288,6 +296,7 @@ function snapshot(): EditState {
   return {
     zooms: zooms.map((z) => ({ ...z })),
     trim: { ...trim },
+    cuts: cuts.map((c) => ({ ...c })),
     frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
   };
 }
@@ -302,12 +311,14 @@ function checkpoint(key: string | null = null) {
 function restore(s: EditState) {
   zooms = s.zooms;
   trim = s.trim;
+  cuts = s.cuts;
   for (const key of FRAME_KEYS) {
     style[key] = s.frame[key];
     $<HTMLInputElement>(key).value = String(s.frame[key]);
   }
   lastActive = -2;
   renderTrimUi();
+  renderCutUi();
   syncHistoryUi();
 }
 
@@ -342,13 +353,15 @@ async function open(blob: Blob, camera: Blob | null = null) {
     await setCamera(camera);
     hasVideo = true;
     zooms = [];
+    cuts = [];
     trim = fullTrim(video.duration);
     history.clear();
     syncHistoryUi();
     empty.hidden = true;
-    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, setInBtn, setOutBtn]) el.disabled = false;
+    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, addCutBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
     renderTrimUi();
+    renderCutUi();
     notify(`Loaded a ${formatTime(video.duration)} clip. Add zooms, pick a backdrop, then export.`);
   } catch (err) {
     notify((err as Error).message);
@@ -524,7 +537,7 @@ function setRecording(on: boolean) {
 
 playBtn.addEventListener("click", () => {
   if (!video.paused) return video.pause();
-  video.currentTime = playStart(trim, video.currentTime);
+  video.currentTime = playFrom(video.currentTime);
   void video.play();
 });
 scrub.addEventListener("input", () => {
@@ -560,7 +573,8 @@ function runAction(action: Action) {
     case "setIn": return setTrim("start");
     case "setOut": return setTrim("end");
     case "addZoom": return addZoomBtn.click();
-    case "removeZoom": return removeZoomAtPlayhead();
+    case "addCut": return addCutBtn.click();
+    case "remove": return removeAtPlayhead();
     case "back": return step(-0.1);
     case "forward": return step(0.1);
     case "backLong": return step(-1);
@@ -610,6 +624,10 @@ function syncTransport() {
     video.pause();
     video.currentTime = trim.end;
   }
+  // Jump over cut-away parts while playing (and during a real-time export).
+  if (!video.paused && !video.seeking && cutIndexAt(cuts, video.currentTime) >= 0) {
+    video.currentTime = Math.min(trim.end, skipCuts(cuts, video.currentTime));
+  }
   const active = zoomIndexAt(zooms, video.currentTime);
   if (active !== lastActive) {
     lastActive = active;
@@ -642,6 +660,7 @@ function renderTrimUi() {
   trimStartLabel.textContent = formatTimeFine(trim.start);
   trimEndLabel.textContent = formatTimeFine(trim.end);
   resetTrimBtn.hidden = isFullTrim(trim, video.duration);
+  renderCutResult();
 }
 
 // ---- Zooms -------------------------------------------------------------------
@@ -663,9 +682,14 @@ function removeZoom(i: number) {
   lastActive = -2;
 }
 
-function removeZoomAtPlayhead() {
+function removeAtPlayhead() {
+  const c = cutIndexAt(cuts, video.currentTime);
+  if (c >= 0) {
+    removeCut(c);
+    return notify("Cut removed. Press Ctrl/⌘ Z to bring it back.");
+  }
   const i = zoomIndexAt(zooms, video.currentTime);
-  if (i < 0) return notify("No zoom at the playhead.");
+  if (i < 0) return notify("No zoom or cut at the playhead.");
   removeZoom(i);
   notify("Zoom removed. Press Ctrl/⌘ Z to bring it back.");
 }
@@ -689,63 +713,77 @@ canvas.addEventListener("click", (e) => {
   notify("Zoom aimed.");
 });
 
-// Drag a zoom's edge on the timeline to change its length. The pointer is
-// captured by the lane (which is never re-created), so re-rendering the bars
-// mid-drag is safe.
-let drag: { index: number; edge: Edge; pointerId: number } | null = null;
+// Drag a zoom's or cut's edge on the timeline to change its length. The
+// pointer is captured by the lane (which is never re-created), so re-rendering
+// the bars mid-drag is safe.
+type LaneKind = "zoom" | "cut";
+let drag: { kind: LaneKind; index: number; edge: Edge; pointerId: number } | null = null;
 
-zoomLane.addEventListener("pointerdown", (e) => {
-  const grip = (e.target as HTMLElement).closest<HTMLElement>(".grip");
-  if (!grip || !hasVideo || exporting) return;
-  e.preventDefault();
-  video.pause();
-  checkpoint();
-  drag = { index: Number(grip.dataset.index), edge: grip.dataset.edge as Edge, pointerId: e.pointerId };
-  zoomLane.setPointerCapture(e.pointerId);
-  zoomLane.classList.add("dragging");
-});
+function laneDrag(lane: HTMLElement, kind: LaneKind) {
+  lane.addEventListener("pointerdown", (e) => {
+    const grip = (e.target as HTMLElement).closest<HTMLElement>(".grip");
+    if (!grip || !hasVideo || exporting) return;
+    e.preventDefault();
+    video.pause();
+    checkpoint();
+    drag = { kind, index: Number(grip.dataset.index), edge: grip.dataset.edge as Edge, pointerId: e.pointerId };
+    lane.setPointerCapture(e.pointerId);
+    lane.classList.add("dragging");
+  });
+  lane.addEventListener("pointermove", (e) => {
+    if (!drag || drag.kind !== kind || e.pointerId !== drag.pointerId) return;
+    const rect = lane.getBoundingClientRect();
+    const t = clamp01((e.clientX - rect.left) / rect.width) * video.duration;
+    let span: Span;
+    if (kind === "zoom") {
+      zooms = resizeZoom(zooms, drag.index, drag.edge, t, video.duration);
+      span = zooms[drag.index];
+      renderZoomUi();
+    } else {
+      cuts = resizeZoom(cuts, drag.index, drag.edge, t, video.duration, MIN_CUT_LENGTH);
+      span = cuts[drag.index];
+      renderCutUi();
+    }
+    // Show the frame at the edge being moved, just inside the span.
+    video.currentTime = drag.edge === "start" ? span.start : Math.max(span.start, span.end - 0.05);
+  });
+  const end = (e: PointerEvent) => {
+    if (!drag || drag.kind !== kind || e.pointerId !== drag.pointerId) return;
+    const span = kind === "zoom" ? zooms[drag.index] : cuts[drag.index];
+    drag = null;
+    lane.classList.remove("dragging");
+    if (kind === "cut") renderCutUi();
+    if (span) notify(`${kind === "zoom" ? "Zoom now runs" : "Cut now removes"} ${formatTimeFine(span.start)}–${formatTimeFine(span.end)}.`);
+  };
+  lane.addEventListener("pointerup", end);
+  lane.addEventListener("pointercancel", end);
+}
+laneDrag(zoomLane, "zoom");
+laneDrag(cutLane, "cut");
 
-zoomLane.addEventListener("pointermove", (e) => {
-  if (!drag || e.pointerId !== drag.pointerId) return;
-  const rect = zoomLane.getBoundingClientRect();
-  const t = clamp01((e.clientX - rect.left) / rect.width) * video.duration;
-  zooms = resizeZoom(zooms, drag.index, drag.edge, t, video.duration);
-  const z = zooms[drag.index];
-  // Show the frame at the edge being moved, just inside the zoom.
-  video.currentTime = drag.edge === "start" ? z.start : Math.max(z.start, z.end - 0.05);
-  renderZoomUi();
-});
-
-const endDrag = (e: PointerEvent) => {
-  if (!drag || e.pointerId !== drag.pointerId) return;
-  const z = zooms[drag.index];
-  drag = null;
-  zoomLane.classList.remove("dragging");
-  if (z) notify(`Zoom now runs ${formatTimeFine(z.start)}–${formatTimeFine(z.end)}.`);
-};
-zoomLane.addEventListener("pointerup", endDrag);
-zoomLane.addEventListener("pointercancel", endDrag);
+/** Timeline bars with drag grips, one per span. */
+function laneBars(spans: readonly Span[], kind: LaneKind, active: number, noun: string): HTMLElement[] {
+  const d = video.duration || 1;
+  return spans.map((z, i) => {
+    const s = document.createElement("span");
+    s.style.left = `${(z.start / d) * 100}%`;
+    s.style.width = `${((z.end - z.start) / d) * 100}%`;
+    s.classList.toggle("active", i === active || (drag?.kind === kind && drag.index === i));
+    for (const edge of ["start", "end"] as const) {
+      const g = document.createElement("i");
+      g.className = "grip";
+      g.dataset.edge = edge;
+      g.dataset.index = String(i);
+      g.title = `Drag to change where this ${noun} ${edge === "start" ? "starts" : "ends"}`;
+      s.append(g);
+    }
+    return s;
+  });
+}
 
 function renderZoomUi() {
-  const d = video.duration || 1;
   const active = zoomIndexAt(zooms, video.currentTime);
-  zoomLane.replaceChildren(
-    ...zooms.map((z, i) => {
-      const s = document.createElement("span");
-      s.style.left = `${(z.start / d) * 100}%`;
-      s.style.width = `${((z.end - z.start) / d) * 100}%`;
-      s.classList.toggle("active", i === active || drag?.index === i);
-      for (const edge of ["start", "end"] as const) {
-        const g = document.createElement("i");
-        g.className = "grip";
-        g.dataset.edge = edge;
-        g.dataset.index = String(i);
-        g.title = edge === "start" ? "Drag to change where this zoom starts" : "Drag to change where this zoom ends";
-        s.append(g);
-      }
-      return s;
-    }),
-  );
+  zoomLane.replaceChildren(...laneBars(zooms, "zoom", active, "zoom"));
   zoomList.replaceChildren(
     ...zooms.map((z, i) => {
       const li = document.createElement("li");
@@ -776,11 +814,76 @@ function renderZoomUi() {
   canvas.classList.toggle("aiming", active >= 0);
 }
 
+// ---- Cuts --------------------------------------------------------------------
+
+/** Where to start playing: inside the trim and outside any cut. */
+function playFrom(t: number) {
+  const at = skipCuts(cuts, playStart(trim, t));
+  return at >= trim.end - 0.05 ? skipCuts(cuts, trim.start) : at;
+}
+
+addCutBtn.addEventListener("click", () => {
+  const next = addCut(cuts, video.currentTime, video.duration);
+  if (next.length === cuts.length) {
+    notify("There is already a cut here. Move the playhead to a part you want to keep.");
+    return;
+  }
+  checkpoint();
+  cuts = next;
+  renderCutUi();
+  notify("Cut 1 s. Drag the red bar's ends on the timeline to cut more or less.");
+});
+
+function removeCut(i: number) {
+  checkpoint();
+  cuts = cuts.filter((_, j) => j !== i);
+  renderCutUi();
+}
+
+function renderCutUi() {
+  const active = cutIndexAt(cuts, video.currentTime);
+  cutLane.replaceChildren(...laneBars(cuts, "cut", active, "cut"));
+  cutList.replaceChildren(
+    ...cuts.map((c, i) => {
+      const li = document.createElement("li");
+      const label = document.createElement("button");
+      label.type = "button";
+      label.textContent = `${formatTimeFine(c.start)}–${formatTimeFine(c.end)}`;
+      label.title = "Show where this cut starts";
+      label.addEventListener("click", () => {
+        video.pause();
+        video.currentTime = c.start;
+      });
+      const len = document.createElement("span");
+      len.className = "cut-len";
+      len.textContent = `−${(c.end - c.start).toFixed(1)} s`;
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "Remove";
+      del.addEventListener("click", () => removeCut(i));
+      li.append(label, len, del);
+      return li;
+    }),
+  );
+  cutEmpty.hidden = cuts.length > 0;
+  renderCutResult();
+}
+
+function renderCutResult() {
+  const kept = keptDuration(trim, cuts);
+  cutResult.hidden = cuts.length === 0;
+  cutResult.textContent = `Result: ${formatTimeFine(kept)} (${formatTimeFine(trim.end - trim.start - kept)} cut).`;
+}
+
 // ---- Export ------------------------------------------------------------------
 
 exportBtn.addEventListener("click", async () => {
   if (exporting) {
     exporting.cancel();
+    return;
+  }
+  if (keptDuration(trim, cuts) < 0.2) {
+    notify("Everything is cut. Remove a cut or keep more of the clip before exporting.");
     return;
   }
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
@@ -825,7 +928,7 @@ exportBtn.addEventListener("click", async () => {
 
 async function exportGifPath(stamp: string) {
   if (!sourceBlob) return;
-  if (gifTooLong(trim)) {
+  if (gifTooLong(trim, cuts)) {
     notify(`GIFs are limited to ${GIF_MAX_SECONDS} s. Trim the clip (I / O keys) or export a video instead.`);
     return;
   }
@@ -835,6 +938,7 @@ async function exportGifPath(stamp: string) {
     source: sourceBlob,
     size: gifSize({ width: canvas.width, height: canvas.height }),
     range: trim,
+    cuts,
     draw: await styledDraw(),
     onProgress: (f) => notify(`Exporting GIF… ${Math.round(f * 100)}%`, true),
   });
@@ -891,6 +995,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     size,
     plan,
     range: trim,
+    cuts,
     frameRate: settings.frameRate,
     draw: await styledDraw(),
     onProgress: (f) => notify(`Exporting ${plan.container.toUpperCase()}… ${Math.round(f * 100)}%`, true),

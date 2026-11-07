@@ -37,11 +37,13 @@
           </button>
           <span class="time" id="time">0:00 / 0:00</span>
           <div class="track" id="track">
-            <div class="zooms" id="zoomLane" aria-label="Zooms on the timeline. Drag a zoom's edges to change its length."></div>
+            <div class="zooms lane" id="zoomLane" aria-label="Zooms on the timeline. Drag a zoom's edges to change its length."></div>
+            <div class="cuts lane" id="cutLane" aria-label="Cuts on the timeline. Drag a cut's edges to change what it removes."></div>
             <div class="trim-shade" aria-hidden="true"><span id="cutBefore"></span><span id="cutAfter"></span></div>
             <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Playhead" disabled />
           </div>
           <button id="addZoom" class="btn btn-small" type="button" disabled>Add zoom here</button>
+          <button id="addCut" class="btn btn-small" type="button" title="Cut 1 s at the playhead (X)" disabled>Cut here</button>
           <div class="history" role="group" aria-label="History">
             <button id="undo" class="icon-btn" type="button" aria-label="Undo" title="Undo (Ctrl/⌘ Z)" disabled>
               <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M7.5 5 3.5 9l4 4M4 9h8a4.5 4.5 0 0 1 0 9h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -107,6 +109,12 @@
           <div class="trim-row"><span>Start <b id="trimStart">0:00.0</b></span><button id="setIn" class="btn btn-small" type="button" disabled>Set to playhead</button></div>
           <div class="trim-row"><span>End <b id="trimEnd">0:00.0</b></span><button id="setOut" class="btn btn-small" type="button" disabled>Set to playhead</button></div>
           <p class="note">Press <kbd>I</kbd> or <kbd>O</kbd> to set the start or end. <button id="resetTrim" class="link-btn" type="button" hidden>Keep the whole clip</button></p>
+        </fieldset>
+        <fieldset>
+          <legend>Cuts</legend>
+          <ul class="zoom-list cut-list" id="cutList"></ul>
+          <p class="note" id="cutEmpty">Press <kbd>X</kbd> or Cut here to drop a second at the playhead, then drag the red bar's ends. Playback and exports skip cut parts.</p>
+          <p class="note" id="cutResult" hidden></p>
         </fieldset>
         <fieldset>
           <legend>Zooms</legend>

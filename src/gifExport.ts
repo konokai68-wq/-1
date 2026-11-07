@@ -7,6 +7,7 @@
 import { GIFEncoder, applyPalette, quantize } from "gifenc";
 import { BlobSource, CanvasSink, Input, MATROSKA, MP4, QTFF, WEBM } from "mediabunny";
 import { planGif } from "./gif";
+import type { Span } from "./cuts";
 import type { Size } from "./layout";
 import type { ExportJob } from "./media";
 
@@ -14,6 +15,7 @@ export interface GifExportOptions {
   source: Blob;
   size: Size;
   range: { start: number; end: number };
+  cuts: readonly Span[];
   draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
   onProgress: (fraction: number) => void;
 }
@@ -29,7 +31,7 @@ export function exportGif(opts: GifExportOptions): ExportJob {
   };
 
   const run = async (): Promise<Blob | null> => {
-    const { times, delays } = planGif(opts.range);
+    const { times, delays } = planGif(opts.range, undefined, opts.cuts);
     const canvas = document.createElement("canvas");
     canvas.width = opts.size.width;
     canvas.height = opts.size.height;

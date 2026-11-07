@@ -20,8 +20,10 @@ import {
   canEncodeAudio,
   canEncodeVideo,
   type AudioCodec,
+  type AudioSample,
   type VideoCodec,
 } from "mediabunny";
+import { toOutputTime, type Span } from "./cuts";
 import type { Size } from "./layout";
 import type { ExportJob } from "./media";
 
@@ -51,6 +53,23 @@ export function planOutput(enc: Encodable, hasAudio: boolean): OutputPlan | null
 /** Output timestamps start at zero; zooms are keyed to the source timeline. */
 export function sourceTime(outputTimestamp: number, trimStart: number): number {
   return outputTimestamp + trimStart;
+}
+
+/**
+ * Drop audio inside cuts and close the gaps. A sample is kept or dropped by its
+ * start time; kept samples never overlap the previous one, so at worst a cut
+ * edge is off by one sample's length (~20 ms).
+ */
+function retimeAudio(range: Span, cuts: readonly Span[]) {
+  let nextFree = 0;
+  return (sample: AudioSample): AudioSample | null => {
+    const out = toOutputTime(range, cuts, sourceTime(sample.timestamp, range.start));
+    if (out === null) return null;
+    const at = Math.max(out, nextFree);
+    sample.setTimestamp(at);
+    nextFree = at + sample.duration;
+    return sample;
+  };
 }
 
 function openInput(source: Blob): Input {
@@ -84,6 +103,8 @@ export interface FastExportOptions {
   size: Size;
   plan: OutputPlan;
   range: { start: number; end: number };
+  /** Parts of the source to leave out (source timeline). */
+  cuts: readonly Span[];
   frameRate: number;
   /** Draw one styled frame for `time` (seconds on the source timeline). */
   draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
@@ -101,6 +122,8 @@ export function exportFast(opts: FastExportOptions): FastExportJob {
   const ctx = canvas.getContext("2d")!;
   let conversion: Conversion | null = null;
   let cancelled = false;
+
+  const cuts = opts.cuts;
 
   const run = async (): Promise<Blob | null> => {
     const input = openInput(opts.source);
@@ -123,12 +146,21 @@ export function exportFast(opts: FastExportOptions): FastExportJob {
         processedWidth: opts.size.width,
         processedHeight: opts.size.height,
         process: async (sample) => {
+          const time = sourceTime(sample.timestamp, opts.range.start);
+          const out = cuts.length ? toOutputTime(opts.range, cuts, time) : null;
+          if (cuts.length) {
+            if (out === null) return null;
+            sample.setTimestamp(out);
+          }
           const frame = sample.toCanvasImageSource();
-          await opts.draw(ctx, frame, { width: sample.displayWidth, height: sample.displayHeight }, sourceTime(sample.timestamp, opts.range.start));
+          await opts.draw(ctx, frame, { width: sample.displayWidth, height: sample.displayHeight }, time);
           return canvas;
         },
       },
-      audio: { codec: mp4 ? "aac" : "opus" },
+      audio: {
+        codec: mp4 ? "aac" : "opus",
+        ...(cuts.length ? { forceTranscode: true, process: retimeAudio(opts.range, cuts) } : {}),
+      },
     });
     if (!conversion.isValid) throw new Error("This video can't be converted in this browser.");
     conversion.onProgress = (p) => opts.onProgress(p);

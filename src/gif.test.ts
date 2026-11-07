@@ -36,3 +36,15 @@ describe("gifTooLong", () => {
     expect(gifTooLong({ start: 0, end: GIF_MAX_SECONDS + 0.5 })).toBe(true);
   });
 });
+
+describe("planGif with cuts", () => {
+  it("skips cut-away parts and counts only what is kept", () => {
+    const plan = planGif({ start: 0, end: 3 }, 10, [{ start: 1, end: 2 }]);
+    expect(plan.times).toHaveLength(20);
+    expect(plan.times.some((t) => t >= 1 && t < 2)).toBe(false);
+    expect(plan.times[10]).toBeCloseTo(2);
+  });
+  it("judges GIF length after cuts", () => {
+    expect(gifTooLong({ start: 0, end: GIF_MAX_SECONDS + 5 }, [{ start: 0, end: 6 }])).toBe(false);
+  });
+});

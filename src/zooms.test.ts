@@ -76,3 +76,10 @@ describe("formatTimeFine", () => {
     expect(formatTimeFine(NaN)).toBe("0:00.0");
   });
 });
+
+describe("resizeZoom with a custom minimum", () => {
+  it("works for cut spans", () => {
+    const spans = [{ start: 1, end: 2 }];
+    expect(resizeZoom(spans, 0, "end", 1.05, 10, 0.2)).toEqual([{ start: 1, end: 1.2 }]);
+  });
+});

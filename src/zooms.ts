@@ -32,26 +32,27 @@ export function formatTime(seconds: number): string {
 }
 
 /**
- * Move one edge of zoom `index` to `t`. The zoom keeps MIN_ZOOM_LENGTH seconds
+ * Move one edge of zoom (or cut) `index` to `t`. It keeps `minLength` seconds
  * and never overlaps its neighbours or leaves 0…duration. `segments` must be
  * sorted by start (as addZoom returns them).
  */
-export function resizeZoom(
-  segments: readonly ZoomSegment[],
+export function resizeZoom<T extends { start: number; end: number }>(
+  segments: readonly T[],
   index: number,
   edge: "start" | "end",
   t: number,
   duration: number,
-): ZoomSegment[] {
+  minLength = MIN_ZOOM_LENGTH,
+): T[] {
   const list = [...segments];
   const z = list[index];
   if (!z) return list;
   if (edge === "start") {
     const lo = index > 0 ? list[index - 1].end : 0;
-    const hi = z.end - MIN_ZOOM_LENGTH;
+    const hi = z.end - minLength;
     list[index] = { ...z, start: Math.max(lo, Math.min(hi, t)) };
   } else {
-    const lo = z.start + MIN_ZOOM_LENGTH;
+    const lo = z.start + minLength;
     const hi = index < list.length - 1 ? list[index + 1].start : duration;
     list[index] = { ...z, end: Math.min(hi, Math.max(lo, t)) };
   }
