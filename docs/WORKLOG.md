@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-07 13:00 JST — speed-up segments
+- Added speed-ups (`cuts.ts`: `SpeedSpan`, `pieces`, and the time maps now take speeds): *Speed up* / S adds 2 s at 4× at the playhead; 2× / 4× / 8× per segment in a new Speed-ups panel; teal bars on a third timeline lane with drag grips; Delete and undo / redo cover them.
+- Preview sets `playbackRate` (muted) inside speed-ups; the real-time fallback follows. WebCodecs export retimes frames onto the frame grid (`frameSlotter`, extra frames dropped) and turns sped-up audio into silence of the squeezed length; GIF frames are planned on the output timeline.
+- Checked in headless Chromium: 8 s colour-per-second clip, 2–4 s at 4× and 4–6 s at 2× → WebM+Opus 5.52 s, MP4 5.50 s (330 frames at 60 fps), GIF 5.53 s; colours at 1.5 / 2.3 / 3.2 / 4.0 / 5.0 s match the mapped source times; audio −21 dB outside, −90 dB inside the speed-ups. Tests: 87 passing.
+- Next: text and arrow annotations, or save / load projects (IndexedDB).
+
 ## 2026-11-07 09:00 JST — cut segments
 - Added cuts (`cuts.ts`): *Cut here* / X drops 1 s at the playhead; drag the red bar's ends on a new timeline lane; listed in a Cuts panel with the resulting length; Delete removes the cut (or zoom) at the playhead; part of undo / redo.
 - Playback jumps over cuts. WebCodecs export drops cut frames and retimes the rest in Mediabunny's `process` hooks (audio samples too, never overlapping); GIF frames are planned on the output timeline; the real-time fallback relies on the playback skip.

@@ -26,7 +26,7 @@ Everything runs locally; no server, no account.
 ## Phase 3 — Studio features
 - [x] Webcam bubble (record camera alongside the screen or add a camera clip; circle / rounded, size, corner, mirror; drag on the preview)
 - [x] Cut segments (X / *Cut here*, drag on the timeline; skipped in playback and all exports, audio retimed)
-- [ ] Speed-up segments
+- [x] Speed-up segments (S / *Speed up*, 2× / 4× / 8×, drag on the timeline; muted, frames and GIF timing squeezed in all exports)
 - [ ] Text and arrow annotations
 - [ ] Optional cursor highlight when recording this browser tab
 - [ ] Save / load projects locally (IndexedDB)
