@@ -7,6 +7,7 @@ export type Action =
   | "addZoom"
   | "addCut"
   | "addSpeed"
+  | "addText"
   | "remove"
   | "back"
   | "forward"
@@ -34,7 +35,8 @@ export const SHORTCUTS: readonly { keys: string[]; label: string }[] = [
   { keys: ["Z"], label: "Add zoom at playhead" },
   { keys: ["X"], label: "Cut 1 s at playhead" },
   { keys: ["S"], label: "Speed up 2 s at playhead" },
-  { keys: ["Del"], label: "Remove cut, speed-up or zoom at playhead" },
+  { keys: ["T"], label: "Add text at playhead" },
+  { keys: ["Del"], label: "Remove cut, speed-up, text or zoom at playhead" },
   { keys: ["Ctrl/⌘ Z"], label: "Undo" },
   { keys: ["Ctrl/⌘ Shift Z"], label: "Redo" },
   { keys: ["?"], label: "Show shortcuts" },
@@ -63,6 +65,8 @@ export function actionFor(e: KeyInput): Action | null {
       return "addCut";
     case "s":
       return "addSpeed";
+    case "t":
+      return "addText";
     case "Delete":
     case "Backspace":
       return "remove";

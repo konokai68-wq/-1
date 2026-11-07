@@ -3,7 +3,8 @@ import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
-import { ASPECTS, BACKDROPS, drawFrame, type Backdrop, type CameraLayer, type Style } from "./render";
+import { ASPECTS, BACKDROPS, canvasMeasure, drawFrame, type Backdrop, type CameraLayer, type Style } from "./render";
+import { MIN_TEXT_LENGTH, TEXT_LOOKS, TEXT_SIZES, addText, moveText, textHit, textIndexAt, type TextLook, type TextNote } from "./texts";
 import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShape, type Corner } from "./camera";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
@@ -54,6 +55,10 @@ const addSpeedBtn = $<HTMLButtonElement>("addSpeed");
 const speedLane = $("speedLane");
 const speedList = $<HTMLUListElement>("speedList");
 const speedEmpty = $("speedEmpty");
+const addTextBtn = $<HTMLButtonElement>("addText");
+const textLane = $("textLane");
+const textList = $<HTMLUListElement>("textList");
+const textEmpty = $("textEmpty");
 const trimStartLabel = $("trimStart");
 const trimEndLabel = $("trimEnd");
 const setInBtn = $<HTMLButtonElement>("setIn");
@@ -95,6 +100,7 @@ let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
 let speeds: SpeedSpan[] = [];
+let texts: TextNote[] = [];
 let hasVideo = false;
 let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
@@ -123,6 +129,7 @@ function render() {
     zooms,
     video.currentTime,
     previewCamera(),
+    texts,
   );
 }
 
@@ -306,6 +313,7 @@ interface EditState {
   trim: Trim;
   cuts: Span[];
   speeds: SpeedSpan[];
+  texts: TextNote[];
   frame: Pick<Style, (typeof FRAME_KEYS)[number]>;
 }
 
@@ -317,6 +325,7 @@ function snapshot(): EditState {
     trim: { ...trim },
     cuts: cuts.map((c) => ({ ...c })),
     speeds: speeds.map((s) => ({ ...s })),
+    texts: texts.map((n) => ({ ...n })),
     frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
   };
 }
@@ -333,6 +342,7 @@ function restore(s: EditState) {
   trim = s.trim;
   cuts = s.cuts;
   speeds = s.speeds;
+  texts = s.texts;
   for (const key of FRAME_KEYS) {
     style[key] = s.frame[key];
     $<HTMLInputElement>(key).value = String(s.frame[key]);
@@ -341,6 +351,7 @@ function restore(s: EditState) {
   renderTrimUi();
   renderCutUi();
   renderSpeedUi();
+  renderTextUi();
   syncHistoryUi();
 }
 
@@ -377,15 +388,17 @@ async function open(blob: Blob, camera: Blob | null = null) {
     zooms = [];
     cuts = [];
     speeds = [];
+    texts = [];
     trim = fullTrim(video.duration);
     history.clear();
     syncHistoryUi();
     empty.hidden = true;
-    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, addCutBtn, addSpeedBtn, setInBtn, setOutBtn]) el.disabled = false;
+    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, addCutBtn, addSpeedBtn, addTextBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
     renderTrimUi();
     renderCutUi();
     renderSpeedUi();
+    renderTextUi();
     notify(`Loaded a ${formatTime(video.duration)} clip. Add zooms, pick a backdrop, then export.`);
   } catch (err) {
     notify((err as Error).message);
@@ -500,6 +513,52 @@ function canvasPoint(e: MouseEvent) {
 let bubbleDrag: { pointerId: number; moved: boolean } | null = null;
 let suppressClick = false;
 
+// Drag a text callout on the preview to move it (it is drawn above the bubble).
+let textDrag: { pointerId: number; index: number; dx: number; dy: number; moved: boolean } | null = null;
+const measure = canvasMeasure(document.createElement("canvas").getContext("2d")!);
+
+function textUnder(x: number, y: number) {
+  return hasVideo ? textHit(texts, video.currentTime, canvas, x, y, measure) : -1;
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  const p = canvasPoint(e);
+  const i = exporting ? -1 : textUnder(p.x, p.y);
+  if (i < 0) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  video.pause();
+  // Leave the text box so keys (Ctrl/⌘ Z, Delete) act on the editor again.
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  const n = texts[i];
+  textDrag = { pointerId: e.pointerId, index: i, dx: n.x * canvas.width - p.x, dy: n.y * canvas.height - p.y, moved: false };
+  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add("moving-text");
+});
+canvas.addEventListener("pointermove", (e) => {
+  const p = canvasPoint(e);
+  if (!textDrag) {
+    canvas.classList.toggle("over-text", textUnder(p.x, p.y) >= 0);
+    return;
+  }
+  if (e.pointerId !== textDrag.pointerId) return;
+  e.stopImmediatePropagation();
+  if (!textDrag.moved) checkpoint();
+  textDrag.moved = true;
+  const i = textDrag.index;
+  texts[i] = moveText(texts[i], (p.x + textDrag.dx) / canvas.width, (p.y + textDrag.dy) / canvas.height);
+});
+const endTextDrag = (e: PointerEvent) => {
+  if (!textDrag || e.pointerId !== textDrag.pointerId) return;
+  e.stopImmediatePropagation();
+  // A press on a callout never aims a zoom.
+  suppressClick = true;
+  textDrag = null;
+  canvas.classList.remove("moving-text");
+};
+canvas.addEventListener("pointerup", endTextDrag);
+canvas.addEventListener("pointercancel", endTextDrag);
+
 canvas.addEventListener("pointerdown", (e) => {
   const p = canvasPoint(e);
   if (!onBubble(p.x, p.y) || exporting) return;
@@ -599,6 +658,7 @@ function runAction(action: Action) {
     case "addZoom": return addZoomBtn.click();
     case "addCut": return addCutBtn.click();
     case "addSpeed": return addSpeedBtn.click();
+    case "addText": return addTextBtn.click();
     case "remove": return removeAtPlayhead();
     case "back": return step(-0.1);
     case "forward": return step(0.1);
@@ -638,6 +698,7 @@ shortcutsDialog.addEventListener("click", (e) => {
 });
 
 let lastActive = -2;
+let lastActiveText = -2;
 function syncTransport() {
   const d = video.duration || 0;
   if (document.activeElement !== scrub) scrub.value = String(d ? Math.round((video.currentTime / d) * 1000) : 0);
@@ -664,6 +725,11 @@ function syncTransport() {
   if (active !== lastActive) {
     lastActive = active;
     renderZoomUi();
+  }
+  const activeText = textIndexAt(texts, video.currentTime);
+  if (activeText !== lastActiveText) {
+    lastActiveText = activeText;
+    markActiveText();
   }
 }
 
@@ -725,8 +791,13 @@ function removeAtPlayhead() {
     removeSpeed(s);
     return notify("Speed-up removed. Press Ctrl/⌘ Z to bring it back.");
   }
+  const n = textIndexAt(texts, video.currentTime);
+  if (n >= 0) {
+    removeText(n);
+    return notify("Text removed. Press Ctrl/⌘ Z to bring it back.");
+  }
   const i = zoomIndexAt(zooms, video.currentTime);
-  if (i < 0) return notify("No zoom, cut or speed-up at the playhead.");
+  if (i < 0) return notify("No zoom, cut, speed-up or text at the playhead.");
   removeZoom(i);
   notify("Zoom removed. Press Ctrl/⌘ Z to bring it back.");
 }
@@ -753,7 +824,7 @@ canvas.addEventListener("click", (e) => {
 // Drag a zoom's, cut's or speed-up's edge on the timeline to change its length.
 // The pointer is captured by the lane (which is never re-created), so
 // re-rendering the bars mid-drag is safe.
-type LaneKind = "zoom" | "cut" | "speed";
+type LaneKind = "zoom" | "cut" | "speed" | "text";
 let drag: { kind: LaneKind; index: number; edge: Edge; pointerId: number } | null = null;
 
 function laneDrag(lane: HTMLElement, kind: LaneKind) {
@@ -780,22 +851,27 @@ function laneDrag(lane: HTMLElement, kind: LaneKind) {
       cuts = resizeZoom(cuts, drag.index, drag.edge, t, video.duration, MIN_CUT_LENGTH);
       span = cuts[drag.index];
       renderCutUi();
-    } else {
+    } else if (kind === "speed") {
       speeds = resizeZoom(speeds, drag.index, drag.edge, t, video.duration, MIN_SPEED_LENGTH);
       span = speeds[drag.index];
       renderSpeedUi();
+    } else {
+      texts = resizeZoom(texts, drag.index, drag.edge, t, video.duration, MIN_TEXT_LENGTH);
+      span = texts[drag.index];
+      renderTextLane();
     }
     // Show the frame at the edge being moved, just inside the span.
     video.currentTime = drag.edge === "start" ? span.start : Math.max(span.start, span.end - 0.05);
   });
   const end = (e: PointerEvent) => {
     if (!drag || drag.kind !== kind || e.pointerId !== drag.pointerId) return;
-    const span = (kind === "zoom" ? zooms : kind === "cut" ? cuts : speeds)[drag.index];
+    const span = { zoom: zooms, cut: cuts, speed: speeds, text: texts }[kind][drag.index];
     drag = null;
     lane.classList.remove("dragging");
     if (kind === "cut") renderCutUi();
     if (kind === "speed") renderSpeedUi();
-    const what = { zoom: "Zoom now runs", cut: "Cut now removes", speed: "Speed-up now covers" }[kind];
+    if (kind === "text") renderTextUi();
+    const what = { zoom: "Zoom now runs", cut: "Cut now removes", speed: "Speed-up now covers", text: "Text now shows" }[kind];
     if (span) notify(`${what} ${formatTimeFine(span.start)}–${formatTimeFine(span.end)}.`);
   };
   lane.addEventListener("pointerup", end);
@@ -804,6 +880,7 @@ function laneDrag(lane: HTMLElement, kind: LaneKind) {
 laneDrag(zoomLane, "zoom");
 laneDrag(cutLane, "cut");
 laneDrag(speedLane, "speed");
+laneDrag(textLane, "text");
 
 /** Timeline bars with drag grips, one per span. */
 function laneBars(spans: readonly Span[], kind: LaneKind, active: number, noun: string): HTMLElement[] {
@@ -980,6 +1057,103 @@ function renderSpeedUi() {
   renderCutResult();
 }
 
+// ---- Text callouts ------------------------------------------------------------
+
+addTextBtn.addEventListener("click", () => {
+  const next = addText(texts, video.currentTime, video.duration);
+  if (next.length === texts.length) {
+    notify("There is already text here. Move the playhead to a spot without text.");
+    return;
+  }
+  checkpoint();
+  video.pause();
+  const added = next.find((n) => !texts.includes(n));
+  texts = next;
+  renderTextUi();
+  // Start typing straight away.
+  const input = textList.querySelector<HTMLInputElement>(`input[data-index="${added ? texts.indexOf(added) : 0}"]`);
+  input?.focus();
+  input?.select();
+  notify("Text added for 3 s. Type your words, drag the text on the preview to move it.");
+});
+
+function removeText(i: number) {
+  checkpoint();
+  texts = texts.filter((_, j) => j !== i);
+  renderTextUi();
+}
+
+function renderTextLane() {
+  const active = textIndexAt(texts, video.currentTime);
+  textLane.replaceChildren(...laneBars(texts, "text", active, "text"));
+}
+
+/** Highlight the callout at the playhead without rebuilding the list (keeps typing focus). */
+function markActiveText() {
+  const active = textIndexAt(texts, video.currentTime);
+  textList.querySelectorAll("li").forEach((li, i) => li.classList.toggle("active", i === active));
+  textLane.querySelectorAll("span").forEach((s, i) => s.classList.toggle("active", i === active || (drag?.kind === "text" && drag.index === i)));
+}
+
+function renderTextUi() {
+  renderTextLane();
+  textList.replaceChildren(
+    ...texts.map((n, i) => {
+      const li = document.createElement("li");
+      const time = document.createElement("button");
+      time.type = "button";
+      time.className = "text-time";
+      time.textContent = `${formatTimeFine(n.start)}–${formatTimeFine(n.end)}`;
+      time.title = "Show this text";
+      time.addEventListener("click", () => {
+        video.pause();
+        video.currentTime = Math.min(n.end - 0.05, n.start + 0.5);
+      });
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = n.text;
+      input.maxLength = 140;
+      input.dataset.index = String(i);
+      input.setAttribute("aria-label", "Text");
+      input.addEventListener("focus", () => {
+        if (textIndexAt(texts, video.currentTime) !== i) {
+          video.pause();
+          video.currentTime = Math.min(texts[i].end - 0.05, texts[i].start + 0.5);
+        }
+      });
+      input.addEventListener("input", () => {
+        checkpoint(`text-${i}`);
+        texts[i] = { ...texts[i], text: input.value };
+      });
+      const look = document.createElement("select");
+      look.setAttribute("aria-label", "Text style");
+      for (const k of TEXT_LOOKS) look.add(new Option(k.label, k.id, false, k.id === n.look));
+      look.addEventListener("change", () => {
+        checkpoint();
+        texts[i] = { ...texts[i], look: look.value as TextLook };
+      });
+      const size = document.createElement("select");
+      size.setAttribute("aria-label", "Text size");
+      for (const z of TEXT_SIZES) size.add(new Option(z.label, String(z.value), false, z.value === n.size));
+      size.addEventListener("change", () => {
+        checkpoint();
+        texts[i] = { ...texts[i], size: Number(size.value) };
+      });
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "Remove";
+      del.addEventListener("click", () => removeText(i));
+      const row = document.createElement("div");
+      row.className = "text-row";
+      row.append(time, look, size, del);
+      li.append(input, row);
+      return li;
+    }),
+  );
+  textEmpty.hidden = texts.length > 0;
+  markActiveText();
+}
+
 // ---- Export ------------------------------------------------------------------
 
 exportBtn.addEventListener("click", async () => {
@@ -1076,9 +1250,10 @@ async function styledDraw(): Promise<Draw> {
   const cam = cameraBlob && bubble.visible ? await (await import("./cameraFrames")).openCameraFrames(cameraBlob) : null;
   exportCamera = cam;
   const b = { ...bubble };
+  const notes = texts.map((n) => ({ ...n }));
   return async (c, frame, frameSize, time) => {
     const f = cam ? await cam.at(time) : null;
-    drawFrame(c, frame, frameSize, style, zooms, time, f ? { ...f, bubble: b } : null);
+    drawFrame(c, frame, frameSize, style, zooms, time, f ? { ...f, bubble: b } : null, notes);
   };
 }
 

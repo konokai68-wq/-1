@@ -1,5 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, fitFrame, sourceWindow, type Size, type ZoomSegment } from "./layout";
+import { TEXT_LOOKS, layoutText, textIndexAt, textOpacity, type TextNote } from "./texts";
 
 export interface GradientBackdrop {
   kind: "gradient";
@@ -71,6 +72,7 @@ export function drawFrame(
   zooms: readonly ZoomSegment[],
   time: number,
   camera: CameraLayer | null = null,
+  texts: readonly TextNote[] = [],
 ): void {
   const { width, height } = ctx.canvas;
   paintBackdrop(ctx, style.backdrop, width, height);
@@ -102,6 +104,49 @@ export function drawFrame(
   ctx.restore();
 
   if (camera?.bubble.visible && camera.size.width > 0) drawBubble(ctx, camera);
+  drawTexts(ctx, texts, time);
+}
+
+/** Font used for text callouts (the size is filled in per callout). */
+export const textFont = (px: number) => `650 ${px}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+
+/** Width measurer for layoutText, using the canvas's own font metrics. */
+export function canvasMeasure(ctx: CanvasRenderingContext2D) {
+  return (fontSize: number) => {
+    ctx.font = textFont(fontSize);
+    return (s: string) => ctx.measureText(s).width;
+  };
+}
+
+/** Draw the text callout shown at `time`: a pill that fades and rises in. */
+export function drawTexts(ctx: CanvasRenderingContext2D, texts: readonly TextNote[], time: number): void {
+  const i = textIndexAt(texts, time);
+  if (i < 0) return;
+  const note = texts[i];
+  const alpha = textOpacity(note, time);
+  if (alpha <= 0 || !note.text.trim()) return;
+  const { width, height } = ctx.canvas;
+  ctx.save();
+  const l = layoutText({ width, height }, note, canvasMeasure(ctx));
+  const look = TEXT_LOOKS.find((k) => k.id === note.look) ?? TEXT_LOOKS[0];
+  const rise = (1 - alpha) * l.fontSize * 0.35;
+  const { x, y: y0, width: w, height: h } = l.box;
+  const y = y0 + rise;
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = "rgba(8, 14, 30, 0.35)";
+  ctx.shadowBlur = l.fontSize * 0.5;
+  ctx.shadowOffsetY = l.fontSize * 0.12;
+  ctx.fillStyle = look.fill;
+  roundRect(ctx, x, y, w, h, Math.min(h / 2, l.fontSize * 0.6));
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.fillStyle = look.ink;
+  ctx.font = textFont(l.fontSize);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const top = y + (h - l.lines.length * l.lineHeight) / 2;
+  l.lines.forEach((line, n) => ctx.fillText(line, x + w / 2, top + (n + 0.5) * l.lineHeight));
+  ctx.restore();
 }
 
 /** Draw the webcam bubble: soft shadow, cropped camera picture and a thin rim. */

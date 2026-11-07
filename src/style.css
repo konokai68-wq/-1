@@ -10,6 +10,7 @@
   --rec: #e5484d;
   --zoom: #f2a33a;
   --speed: #1fa595;
+  --text: #8b5cf6;
   --radius-control: 7px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink);
@@ -110,11 +111,13 @@ button, select, input, label.btn { font: inherit; color: inherit; }
 }
 .icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .time { font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--ink-soft); white-space: nowrap; }
-.track { position: relative; flex: 1; height: 64px; }
+.track { position: relative; flex: 1; height: 79px; }
 .lane { position: absolute; left: 0; right: 0; height: 12px; touch-action: none; }
 .zooms { top: 2px; }
 .cuts { top: 17px; }
 .speeds { top: 32px; }
+.texts { top: 47px; }
+.texts span { background: var(--text); }
 .lane span { position: absolute; top: 0; height: 12px; border-radius: 4px; }
 .zooms span { background: var(--zoom); }
 .cuts span {
@@ -137,7 +140,7 @@ button, select, input, label.btn { font: inherit; color: inherit; }
   content: attr(data-rate); position: absolute; inset: 0; display: grid; place-items: center;
   font-size: 9px; font-weight: 700; line-height: 1; color: #fff; pointer-events: none;
 }
-.cuts .grip::after, .speeds .grip::after { background: rgba(255, 255, 255, 0.85); }
+.cuts .grip::after, .speeds .grip::after, .texts .grip::after { background: rgba(255, 255, 255, 0.85); }
 .lane .grip[data-edge="start"] { left: -5px; }
 .lane .grip[data-edge="end"] { right: -5px; }
 .lane.dragging, .lane.dragging .grip { cursor: ew-resize; }
@@ -216,6 +219,16 @@ select {
 .cut-list li { border-left: 3px solid var(--rec); }
 .speed-list li { border-left: 3px solid var(--speed); }
 .speed-list li.active { border-color: var(--speed); }
+.text-list li { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid var(--text); }
+.text-list li.active { border-color: var(--text); }
+.text-list input[type="text"] {
+  font: inherit; font-size: 0.875rem; padding: 5px 7px; border-radius: 5px;
+  border: 1px solid var(--line); background: transparent; color: var(--ink); width: 100%; box-sizing: border-box;
+}
+.text-list input[type="text"]:focus { outline: 2px solid var(--text); outline-offset: -1px; }
+.text-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; }
+.text-time { text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .cut-len { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .trim-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.875rem; color: var(--ink-soft); }
 .trim-row b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; margin-left: 4px; }
@@ -284,3 +297,5 @@ kbd {
 #canvas.over-bubble { cursor: grab; }
 #canvas.moving-bubble { cursor: grabbing; }
 label.link-btn { cursor: pointer; }
+#canvas.over-text { cursor: move; }
+#canvas.moving-text { cursor: grabbing; }
