@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-08 09:00 JST — autosave and resume
+- The last project is autosaved to IndexedDB (`projectStore.ts`: a small "meta" JSON every 1.5 s when it changed, the video / camera / backdrop Blobs only when they change). The start screen offers *Resume last project* (name, length, edits, "saved 5 min ago") or *Discard*.
+- `project.ts` (pure, tested): `sanitizeProject` clamps every span into the clip, drops broken entries and falls back to defaults, so a stale or damaged save never breaks the editor; `editSummary`, `timeAgo`.
+- Checked in headless Chromium: open clip → zoom + text + cut, 1:1, padding 0.2, Moss → reload → resume restores all of it; Discard clears it. Tests: 113 passing.
+- Next: cursor highlight, or faster export in a worker.
+
 ## 2026-11-07 22:00 JST — arrow annotations
 - Callouts can carry an arrow (`TextNote.arrow` tip; `toggleArrow` / `defaultArrowTip` / `arrowGeometry` / `arrowTipHit` in `texts.ts`, pure and tested). *Arrow* in each text row or <kbd>A</kbd> toggles it (A adds a "Look here" callout when none is at the playhead); drag the tip on the preview; empty text gives a bare arrow. Undo / redo covers it.
 - Drawn by `drawArrow` in `render.ts`: shaft from the pill's edge, solid head, outline in the look's ink colour, same fade as the pill — so every export gets it.

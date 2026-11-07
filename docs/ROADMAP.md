@@ -30,7 +30,7 @@ Everything runs locally; no server, no account.
 - [x] Text callouts (T / *Add text*, Dark / Light / Blue, S / M / L, drag on the preview, fade in / out; in all exports)
 - [x] Arrow annotations (A / *Arrow* on a callout; drag the tip on the preview; outlined, fades with the callout; in all exports)
 - [ ] Optional cursor highlight when recording this browser tab
-- [ ] Save / load projects locally (IndexedDB)
+- [x] Save / load projects locally (IndexedDB autosave of the last project, *Resume last project* / *Discard* on the start screen)
 
 ## Phase 4 — Launch & growth
 - [ ] Hosted demo on GitHub Pages, demo GIF in README

@@ -22,6 +22,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **GIF export** for short clips (up to 30 s): 480p, 15 fps, loops forever — ready to drop into a README, pull request or chat
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser
 - **Webcam bubble**: tick *Record my camera with the screen* to record your face alongside, or add an existing camera clip to any video. Choose a circle or rounded square, size, corner (or drag it on the preview) and mirroring — it's kept separate until export, so you can restyle it any time
+- **Never lose an edit**: the project (videos, camera clip, backdrop image and every edit) is saved in this browser as you work. Reload or come back later and press *Resume last project* — or *Discard* to start clean. It stays on your device
 - **Undo / redo** for zooms, cuts, speed-ups, text, trim and frame settings (<kbd>Ctrl/⌘ Z</kbd>, <kbd>Ctrl/⌘ Shift Z</kbd>)
 
 ## Keyboard shortcuts
@@ -60,7 +61,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: saving projects locally, a cursor highlight, and a faster export in a worker.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a cursor highlight, a faster export in a worker, and the hosted demo.
 
 ## Credits
 
@@ -68,7 +69,7 @@ Encoding and muxing use [Mediabunny](https://github.com/Vanilagy/mediabunny) (MP
 
 ## Privacy
 
-Panreel is a static site. There is no backend, no analytics and no account. Recording, editing and encoding all happen locally with standard browser APIs.
+Panreel is a static site. There is no backend, no analytics and no account. Recording, editing and encoding all happen locally with standard browser APIs; the autosaved project lives in your browser's IndexedDB.
 
 ## License
 
