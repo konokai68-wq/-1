@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-07 22:00 JST — arrow annotations
+- Callouts can carry an arrow (`TextNote.arrow` tip; `toggleArrow` / `defaultArrowTip` / `arrowGeometry` / `arrowTipHit` in `texts.ts`, pure and tested). *Arrow* in each text row or <kbd>A</kbd> toggles it (A adds a "Look here" callout when none is at the playhead); drag the tip on the preview; empty text gives a bare arrow. Undo / redo covers it.
+- Drawn by `drawArrow` in `render.ts`: shaft from the pill's edge, solid head, outline in the look's ink colour, same fade as the pill — so every export gets it.
+- Checked in headless Chromium: A at 1 s → arrow shown, tip dragged → preview follows, undo restores; 1080p MP4 shows the arrow at 2 s and nothing at 4.5 s. Tests: 105 passing.
+- Next: save / load projects (IndexedDB), or cursor highlight.
+
 ## 2026-11-07 18:00 JST — text callouts
 - Added text callouts (`texts.ts`: add / wrap / layout / hit-test, pure and tested): *Add text* / T puts a 3 s caption at the playhead and focuses its text box; Dark / Light / Blue looks, S / M / L sizes; drag it on the preview to move it; a violet fourth timeline lane with drag grips; Delete and undo / redo cover it.
 - Drawn by `drawTexts` in `render.ts` above the camera bubble (rounded pill, 0.25 s fade and rise), so the preview, WebCodecs, GIF and real-time exports all get it.

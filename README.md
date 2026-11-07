@@ -17,6 +17,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Cut out** the boring parts: press *Cut here* (or <kbd>X</kbd>) and drag the red bar's ends to choose what to remove. Playback skips cuts and every export leaves them out, with the sound kept in sync
 - **Speed up** slow stretches (installs, loading, typing): press *Speed up* (or <kbd>S</kbd>), pick 2×, 4× or 8× and drag the teal bar's ends. Sped-up parts play fast and silent in the preview and in every export
 - **Text callouts**: press *Add text* (or <kbd>T</kbd>), type a caption, pick Dark / Light / Blue and S / M / L, drag it anywhere on the preview, and drag the violet bar's ends to set when it shows. Callouts fade in and out and are drawn into every export
+- **Arrows**: press *Arrow* on a callout (or <kbd>A</kbd>) to point at something, then drag the arrow's tip on the preview. Clear the text for a bare arrow
 - **Export** to MP4 (H.264) or WebM with WebCodecs: every frame is decoded, styled and re-encoded directly, so the result is frame-accurate and you don't have to watch it play. MP4 is used when your browser can encode H.264 (and AAC for the soundtrack); otherwise Panreel picks WebM so the audio is never dropped. Browsers without WebCodecs fall back to real-time WebM recording
 - **GIF export** for short clips (up to 30 s): 480p, 15 fps, loops forever — ready to drop into a README, pull request or chat
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser
@@ -35,6 +36,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 | <kbd>X</kbd> | Cut 1 s at the playhead |
 | <kbd>S</kbd> | Speed up 2 s at the playhead |
 | <kbd>T</kbd> | Add text at the playhead |
+| <kbd>A</kbd> | Arrow on / off for the text at the playhead (adds text if there is none) |
 | <kbd>Delete</kbd> | Remove the cut, speed-up, text or zoom at the playhead |
 | <kbd>Ctrl/⌘ Z</kbd> · <kbd>Ctrl/⌘ Shift Z</kbd> | Undo · Redo |
 | <kbd>?</kbd> | Show all shortcuts |
@@ -58,7 +60,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: arrow annotations, saving projects locally, and a faster export in a worker.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: saving projects locally, a cursor highlight, and a faster export in a worker.
 
 ## Credits
 

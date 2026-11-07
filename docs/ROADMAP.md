@@ -28,7 +28,7 @@ Everything runs locally; no server, no account.
 - [x] Cut segments (X / *Cut here*, drag on the timeline; skipped in playback and all exports, audio retimed)
 - [x] Speed-up segments (S / *Speed up*, 2× / 4× / 8×, drag on the timeline; muted, frames and GIF timing squeezed in all exports)
 - [x] Text callouts (T / *Add text*, Dark / Light / Blue, S / M / L, drag on the preview, fade in / out; in all exports)
-- [ ] Arrow annotations
+- [x] Arrow annotations (A / *Arrow* on a callout; drag the tip on the preview; outlined, fades with the callout; in all exports)
 - [ ] Optional cursor highlight when recording this browser tab
 - [ ] Save / load projects locally (IndexedDB)
 
