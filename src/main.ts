@@ -8,7 +8,19 @@ import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShap
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
-import { MIN_CUT_LENGTH, addCut, cutIndexAt, keptDuration, skipCuts, type Span } from "./cuts";
+import {
+  MIN_CUT_LENGTH,
+  MIN_SPEED_LENGTH,
+  SPEED_RATES,
+  addCut,
+  addSpeed,
+  cutIndexAt,
+  keptDuration,
+  rateAt,
+  skipCuts,
+  type Span,
+  type SpeedSpan,
+} from "./cuts";
 import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -38,6 +50,10 @@ const cutEmpty = $("cutEmpty");
 const cutResult = $("cutResult");
 const cutBefore = $("cutBefore");
 const cutAfter = $("cutAfter");
+const addSpeedBtn = $<HTMLButtonElement>("addSpeed");
+const speedLane = $("speedLane");
+const speedList = $<HTMLUListElement>("speedList");
+const speedEmpty = $("speedEmpty");
 const trimStartLabel = $("trimStart");
 const trimEndLabel = $("trimEnd");
 const setInBtn = $<HTMLButtonElement>("setIn");
@@ -78,6 +94,7 @@ const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, sha
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
+let speeds: SpeedSpan[] = [];
 let hasVideo = false;
 let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
@@ -114,6 +131,7 @@ function syncCamera() {
   if (!cameraBlob || !camVideo.duration) return;
   const target = Math.min(video.currentTime, camVideo.duration);
   const playing = !video.paused && !video.ended && video.currentTime < camVideo.duration;
+  if (camVideo.playbackRate !== video.playbackRate) camVideo.playbackRate = video.playbackRate;
   if (playing && camVideo.paused) void camVideo.play().catch(() => {});
   if (!playing && !camVideo.paused) camVideo.pause();
   const drift = Math.abs(camVideo.currentTime - target);
@@ -287,6 +305,7 @@ interface EditState {
   zooms: ZoomSegment[];
   trim: Trim;
   cuts: Span[];
+  speeds: SpeedSpan[];
   frame: Pick<Style, (typeof FRAME_KEYS)[number]>;
 }
 
@@ -297,6 +316,7 @@ function snapshot(): EditState {
     zooms: zooms.map((z) => ({ ...z })),
     trim: { ...trim },
     cuts: cuts.map((c) => ({ ...c })),
+    speeds: speeds.map((s) => ({ ...s })),
     frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
   };
 }
@@ -312,6 +332,7 @@ function restore(s: EditState) {
   zooms = s.zooms;
   trim = s.trim;
   cuts = s.cuts;
+  speeds = s.speeds;
   for (const key of FRAME_KEYS) {
     style[key] = s.frame[key];
     $<HTMLInputElement>(key).value = String(s.frame[key]);
@@ -319,6 +340,7 @@ function restore(s: EditState) {
   lastActive = -2;
   renderTrimUi();
   renderCutUi();
+  renderSpeedUi();
   syncHistoryUi();
 }
 
@@ -354,14 +376,16 @@ async function open(blob: Blob, camera: Blob | null = null) {
     hasVideo = true;
     zooms = [];
     cuts = [];
+    speeds = [];
     trim = fullTrim(video.duration);
     history.clear();
     syncHistoryUi();
     empty.hidden = true;
-    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, addCutBtn, setInBtn, setOutBtn]) el.disabled = false;
+    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, addCutBtn, addSpeedBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
     renderTrimUi();
     renderCutUi();
+    renderSpeedUi();
     notify(`Loaded a ${formatTime(video.duration)} clip. Add zooms, pick a backdrop, then export.`);
   } catch (err) {
     notify((err as Error).message);
@@ -574,6 +598,7 @@ function runAction(action: Action) {
     case "setOut": return setTrim("end");
     case "addZoom": return addZoomBtn.click();
     case "addCut": return addCutBtn.click();
+    case "addSpeed": return addSpeedBtn.click();
     case "remove": return removeAtPlayhead();
     case "back": return step(-0.1);
     case "forward": return step(0.1);
@@ -627,6 +652,13 @@ function syncTransport() {
   // Jump over cut-away parts while playing (and during a real-time export).
   if (!video.paused && !video.seeking && cutIndexAt(cuts, video.currentTime) >= 0) {
     video.currentTime = Math.min(trim.end, skipCuts(cuts, video.currentTime));
+  }
+  // Play sped-up parts faster, muted (exports turn them into silence too).
+  const rate = rateAt(speeds, video.currentTime);
+  if (video.playbackRate !== rate) {
+    video.playbackRate = rate;
+    video.muted = rate !== 1;
+    renderSpeedUi();
   }
   const active = zoomIndexAt(zooms, video.currentTime);
   if (active !== lastActive) {
@@ -688,8 +720,13 @@ function removeAtPlayhead() {
     removeCut(c);
     return notify("Cut removed. Press Ctrl/⌘ Z to bring it back.");
   }
+  const s = cutIndexAt(speeds, video.currentTime);
+  if (s >= 0) {
+    removeSpeed(s);
+    return notify("Speed-up removed. Press Ctrl/⌘ Z to bring it back.");
+  }
   const i = zoomIndexAt(zooms, video.currentTime);
-  if (i < 0) return notify("No zoom or cut at the playhead.");
+  if (i < 0) return notify("No zoom, cut or speed-up at the playhead.");
   removeZoom(i);
   notify("Zoom removed. Press Ctrl/⌘ Z to bring it back.");
 }
@@ -713,10 +750,10 @@ canvas.addEventListener("click", (e) => {
   notify("Zoom aimed.");
 });
 
-// Drag a zoom's or cut's edge on the timeline to change its length. The
-// pointer is captured by the lane (which is never re-created), so re-rendering
-// the bars mid-drag is safe.
-type LaneKind = "zoom" | "cut";
+// Drag a zoom's, cut's or speed-up's edge on the timeline to change its length.
+// The pointer is captured by the lane (which is never re-created), so
+// re-rendering the bars mid-drag is safe.
+type LaneKind = "zoom" | "cut" | "speed";
 let drag: { kind: LaneKind; index: number; edge: Edge; pointerId: number } | null = null;
 
 function laneDrag(lane: HTMLElement, kind: LaneKind) {
@@ -739,27 +776,34 @@ function laneDrag(lane: HTMLElement, kind: LaneKind) {
       zooms = resizeZoom(zooms, drag.index, drag.edge, t, video.duration);
       span = zooms[drag.index];
       renderZoomUi();
-    } else {
+    } else if (kind === "cut") {
       cuts = resizeZoom(cuts, drag.index, drag.edge, t, video.duration, MIN_CUT_LENGTH);
       span = cuts[drag.index];
       renderCutUi();
+    } else {
+      speeds = resizeZoom(speeds, drag.index, drag.edge, t, video.duration, MIN_SPEED_LENGTH);
+      span = speeds[drag.index];
+      renderSpeedUi();
     }
     // Show the frame at the edge being moved, just inside the span.
     video.currentTime = drag.edge === "start" ? span.start : Math.max(span.start, span.end - 0.05);
   });
   const end = (e: PointerEvent) => {
     if (!drag || drag.kind !== kind || e.pointerId !== drag.pointerId) return;
-    const span = kind === "zoom" ? zooms[drag.index] : cuts[drag.index];
+    const span = (kind === "zoom" ? zooms : kind === "cut" ? cuts : speeds)[drag.index];
     drag = null;
     lane.classList.remove("dragging");
     if (kind === "cut") renderCutUi();
-    if (span) notify(`${kind === "zoom" ? "Zoom now runs" : "Cut now removes"} ${formatTimeFine(span.start)}–${formatTimeFine(span.end)}.`);
+    if (kind === "speed") renderSpeedUi();
+    const what = { zoom: "Zoom now runs", cut: "Cut now removes", speed: "Speed-up now covers" }[kind];
+    if (span) notify(`${what} ${formatTimeFine(span.start)}–${formatTimeFine(span.end)}.`);
   };
   lane.addEventListener("pointerup", end);
   lane.addEventListener("pointercancel", end);
 }
 laneDrag(zoomLane, "zoom");
 laneDrag(cutLane, "cut");
+laneDrag(speedLane, "speed");
 
 /** Timeline bars with drag grips, one per span. */
 function laneBars(spans: readonly Span[], kind: LaneKind, active: number, noun: string): HTMLElement[] {
@@ -871,8 +915,69 @@ function renderCutUi() {
 
 function renderCutResult() {
   const kept = keptDuration(trim, cuts);
-  cutResult.hidden = cuts.length === 0;
-  cutResult.textContent = `Result: ${formatTimeFine(kept)} (${formatTimeFine(trim.end - trim.start - kept)} cut).`;
+  const result = keptDuration(trim, cuts, speeds);
+  const parts: string[] = [];
+  if (cuts.length) parts.push(`${formatTimeFine(trim.end - trim.start - kept)} cut`);
+  if (speeds.length) parts.push(`${formatTimeFine(kept - result)} saved by speed-ups`);
+  cutResult.hidden = parts.length === 0;
+  cutResult.textContent = `Result: ${formatTimeFine(result)} (${parts.join(", ")}).`;
+}
+
+// ---- Speed-ups ---------------------------------------------------------------
+
+addSpeedBtn.addEventListener("click", () => {
+  const next = addSpeed(speeds, video.currentTime, video.duration);
+  if (next.length === speeds.length) {
+    notify("There is already a speed-up here. Move the playhead to a normal-speed part.");
+    return;
+  }
+  checkpoint();
+  speeds = next;
+  renderSpeedUi();
+  notify("Sped up 2 s at 4×. Drag the teal bar's ends on the timeline to cover more or less.");
+});
+
+function removeSpeed(i: number) {
+  checkpoint();
+  speeds = speeds.filter((_, j) => j !== i);
+  renderSpeedUi();
+}
+
+function renderSpeedUi() {
+  const active = cutIndexAt(speeds, video.currentTime);
+  const bars = laneBars(speeds, "speed", active, "speed-up");
+  bars.forEach((b, i) => (b.dataset.rate = `${speeds[i].rate}×`));
+  speedLane.replaceChildren(...bars);
+  speedList.replaceChildren(
+    ...speeds.map((s, i) => {
+      const li = document.createElement("li");
+      li.classList.toggle("active", i === active);
+      const label = document.createElement("button");
+      label.type = "button";
+      label.textContent = `${formatTimeFine(s.start)}–${formatTimeFine(s.end)}`;
+      label.title = "Show where this speed-up starts";
+      label.addEventListener("click", () => {
+        video.pause();
+        video.currentTime = s.start;
+      });
+      const rate = document.createElement("select");
+      rate.setAttribute("aria-label", "Speed");
+      for (const v of SPEED_RATES) rate.add(new Option(`${v}×`, String(v), false, v === s.rate));
+      rate.addEventListener("change", () => {
+        checkpoint();
+        speeds[i] = { ...speeds[i], rate: Number(rate.value) };
+        renderSpeedUi();
+      });
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "Remove";
+      del.addEventListener("click", () => removeSpeed(i));
+      li.append(label, rate, del);
+      return li;
+    }),
+  );
+  speedEmpty.hidden = speeds.length > 0;
+  renderCutResult();
 }
 
 // ---- Export ------------------------------------------------------------------
@@ -928,7 +1033,7 @@ exportBtn.addEventListener("click", async () => {
 
 async function exportGifPath(stamp: string) {
   if (!sourceBlob) return;
-  if (gifTooLong(trim, cuts)) {
+  if (gifTooLong(trim, cuts, speeds)) {
     notify(`GIFs are limited to ${GIF_MAX_SECONDS} s. Trim the clip (I / O keys) or export a video instead.`);
     return;
   }
@@ -939,6 +1044,7 @@ async function exportGifPath(stamp: string) {
     size: gifSize({ width: canvas.width, height: canvas.height }),
     range: trim,
     cuts,
+    speeds,
     draw: await styledDraw(),
     onProgress: (f) => notify(`Exporting GIF… ${Math.round(f * 100)}%`, true),
   });
@@ -996,6 +1102,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     plan,
     range: trim,
     cuts,
+    speeds,
     frameRate: settings.frameRate,
     draw: await styledDraw(),
     onProgress: (f) => notify(`Exporting ${plan.container.toUpperCase()}… ${Math.round(f * 100)}%`, true),

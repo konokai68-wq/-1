@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addCut, cutIndexAt, keptDuration, keptSpans, skipCuts, toOutputTime, toSourceTime } from "./cuts";
+import { addCut, addSpeed, cutIndexAt, keptDuration, keptSpans, pieces, rateAt, skipCuts, toOutputTime, toSourceTime } from "./cuts";
 
 describe("addCut", () => {
   it("adds a one-second cut at the playhead, kept sorted", () => {
@@ -80,5 +80,47 @@ describe("time mapping", () => {
   });
   it("round-trips kept times", () => {
     for (const t of [1, 2, 2.99, 5, 7.25, 9.9]) expect(toSourceTime(range, cuts, toOutputTime(range, cuts, t)!)).toBeCloseTo(t);
+  });
+});
+
+describe("speed-ups", () => {
+  const range = { start: 0, end: 10 };
+  const speeds = [{ start: 2, end: 6, rate: 4 }];
+
+  it("adds a two-second 4x speed-up that stops at the next one", () => {
+    expect(addSpeed([], 1, 10)).toEqual([{ start: 1, end: 3, rate: 4 }]);
+    expect(addSpeed(speeds, 1, 10, 2)).toEqual([{ start: 1, end: 2, rate: 2 }, ...speeds]);
+    expect(addSpeed(speeds, 3, 10)).toEqual(speeds);
+    expect(addSpeed([], 9.7, 10)).toEqual([]);
+  });
+
+  it("splits the kept range into pieces, cuts winning over speed-ups", () => {
+    expect(pieces(range, [{ start: 5, end: 7 }], speeds)).toEqual([
+      { start: 0, end: 2, rate: 1 },
+      { start: 2, end: 5, rate: 4 },
+      { start: 7, end: 10, rate: 1 },
+    ]);
+  });
+
+  it("squeezes the result length", () => {
+    expect(keptDuration(range, [], speeds)).toBeCloseTo(7);
+    expect(keptDuration({ start: 3, end: 10 }, [], speeds)).toBeCloseTo(4.75);
+  });
+
+  it("maps times both ways through a speed-up", () => {
+    expect(toOutputTime(range, [], 1, speeds)).toBeCloseTo(1);
+    expect(toOutputTime(range, [], 4, speeds)).toBeCloseTo(2.5);
+    expect(toOutputTime(range, [], 8, speeds)).toBeCloseTo(5);
+    expect(toSourceTime(range, [], 2.5, speeds)).toBeCloseTo(4);
+    expect(toSourceTime(range, [], 5, speeds)).toBeCloseTo(8);
+    for (const o of [0, 0.7, 2.2, 3.9, 6.5]) {
+      expect(toOutputTime(range, [], toSourceTime(range, [], o, speeds), speeds)).toBeCloseTo(o);
+    }
+  });
+
+  it("reports the rate at a source time", () => {
+    expect(rateAt(speeds, 1)).toBe(1);
+    expect(rateAt(speeds, 2)).toBe(4);
+    expect(rateAt(speeds, 6)).toBe(1);
   });
 });

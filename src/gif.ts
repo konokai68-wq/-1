@@ -1,5 +1,5 @@
 /** Pure planning helpers for GIF export, kept separate from the encoder so they can be tested. */
-import { keptDuration, toSourceTime, type Span } from "./cuts";
+import { keptDuration, toSourceTime, type Span, type SpeedSpan } from "./cuts";
 import { exportSize } from "./exportSettings";
 import type { Size } from "./layout";
 
@@ -24,21 +24,23 @@ export interface GifPlan {
 /**
  * Sample `range` at `fps`. GIF delays are whole centiseconds, so 15 fps can't be
  * exact per frame; delays alternate (e.g. 70, 60, 70 ms) so the total length
- * matches the clip instead of drifting slower. Cut-away parts are skipped.
+ * matches the clip instead of drifting slower. Cut-away parts are skipped and
+ * sped-up parts sampled more sparsely.
  */
-export function planGif(range: Span, fps = GIF_FPS, cuts: readonly Span[] = []): GifPlan {
-  const duration = keptDuration(range, cuts);
+export function planGif(range: Span, fps = GIF_FPS, cuts: readonly Span[] = [], speeds: readonly SpeedSpan[] = []): GifPlan {
+  const duration = keptDuration(range, cuts, speeds);
+  const mapped = cuts.length > 0 || speeds.length > 0;
   const count = Math.max(1, Math.ceil(duration * fps - 1e-6));
   const times: number[] = [];
   const delays: number[] = [];
   for (let i = 0; i < count; i++) {
-    times.push(cuts.length ? toSourceTime(range, cuts, i / fps) : range.start + i / fps);
+    times.push(mapped ? toSourceTime(range, cuts, i / fps, speeds) : range.start + i / fps);
     const cs = Math.round(((i + 1) * 100) / fps) - Math.round((i * 100) / fps);
     delays.push(Math.max(2, cs) * 10);
   }
   return { times, delays };
 }
 
-export function gifTooLong(range: Span, cuts: readonly Span[] = []): boolean {
-  return keptDuration(range, cuts) > GIF_MAX_SECONDS + 1e-6;
+export function gifTooLong(range: Span, cuts: readonly Span[] = [], speeds: readonly SpeedSpan[] = []): boolean {
+  return keptDuration(range, cuts, speeds) > GIF_MAX_SECONDS + 1e-6;
 }

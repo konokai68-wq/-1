@@ -20,10 +20,10 @@ import {
   canEncodeAudio,
   canEncodeVideo,
   type AudioCodec,
-  type AudioSample,
+  AudioSample,
   type VideoCodec,
 } from "mediabunny";
-import { toOutputTime, type Span } from "./cuts";
+import { pieces, toOutputTime, type Span, type SpeedSpan } from "./cuts";
 import type { Size } from "./layout";
 import type { ExportJob } from "./media";
 
@@ -56,19 +56,55 @@ export function sourceTime(outputTimestamp: number, trimStart: number): number {
 }
 
 /**
- * Drop audio inside cuts and close the gaps. A sample is kept or dropped by its
- * start time; kept samples never overlap the previous one, so at worst a cut
+ * Snap a frame's output time to the frame grid; null when an earlier frame
+ * already fills that slot (sped-up parts deliver several source frames per
+ * output frame).
+ */
+export function frameSlotter(frameRate: number) {
+  let last = -1;
+  return (outputTime: number): number | null => {
+    const slot = Math.round(outputTime * frameRate + 1e-6);
+    if (slot <= last) return null;
+    last = slot;
+    return slot / frameRate;
+  };
+}
+
+/**
+ * Drop audio inside cuts and close the gaps; sped-up parts become silence of
+ * the squeezed length (no chipmunk voices). A sample is kept or dropped by its
+ * start time; kept samples never overlap the previous one, so at worst an edit
  * edge is off by one sample's length (~20 ms).
  */
-function retimeAudio(range: Span, cuts: readonly Span[]) {
+function retimeAudio(range: Span, cuts: readonly Span[], speeds: readonly SpeedSpan[]) {
+  const list = pieces(range, cuts, speeds);
   let nextFree = 0;
+  let owed = 0;
   return (sample: AudioSample): AudioSample | null => {
-    const out = toOutputTime(range, cuts, sourceTime(sample.timestamp, range.start));
+    const t = sourceTime(sample.timestamp, range.start);
+    const out = toOutputTime(range, cuts, t, speeds);
     if (out === null) return null;
     const at = Math.max(out, nextFree);
-    sample.setTimestamp(at);
-    nextFree = at + sample.duration;
-    return sample;
+    const rate = list.find((p) => t >= p.start && t < p.end)?.rate ?? 1;
+    if (rate === 1) {
+      sample.setTimestamp(at);
+      nextFree = at + sample.duration;
+      return sample;
+    }
+    owed += sample.numberOfFrames / rate;
+    const frames = Math.floor(owed);
+    owed -= frames;
+    const { numberOfChannels, sampleRate } = sample;
+    sample.close();
+    if (frames === 0) return null;
+    nextFree = at + frames / sampleRate;
+    return new AudioSample({
+      data: new Float32Array(frames * numberOfChannels),
+      format: "f32-planar",
+      numberOfChannels,
+      sampleRate,
+      timestamp: at,
+    });
   };
 }
 
@@ -105,6 +141,8 @@ export interface FastExportOptions {
   range: { start: number; end: number };
   /** Parts of the source to leave out (source timeline). */
   cuts: readonly Span[];
+  /** Parts of the source to play faster (source timeline). */
+  speeds: readonly SpeedSpan[];
   frameRate: number;
   /** Draw one styled frame for `time` (seconds on the source timeline). */
   draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
@@ -123,7 +161,9 @@ export function exportFast(opts: FastExportOptions): FastExportJob {
   let conversion: Conversion | null = null;
   let cancelled = false;
 
-  const cuts = opts.cuts;
+  const { cuts, speeds } = opts;
+  const edited = cuts.length > 0 || speeds.length > 0;
+  const slot = frameSlotter(opts.frameRate);
 
   const run = async (): Promise<Blob | null> => {
     const input = openInput(opts.source);
@@ -147,10 +187,11 @@ export function exportFast(opts: FastExportOptions): FastExportJob {
         processedHeight: opts.size.height,
         process: async (sample) => {
           const time = sourceTime(sample.timestamp, opts.range.start);
-          const out = cuts.length ? toOutputTime(opts.range, cuts, time) : null;
-          if (cuts.length) {
-            if (out === null) return null;
-            sample.setTimestamp(out);
+          if (edited) {
+            const out = toOutputTime(opts.range, cuts, time, speeds);
+            const at = out === null ? null : slot(out);
+            if (at === null) return null;
+            sample.setTimestamp(at);
           }
           const frame = sample.toCanvasImageSource();
           await opts.draw(ctx, frame, { width: sample.displayWidth, height: sample.displayHeight }, time);
@@ -159,7 +200,7 @@ export function exportFast(opts: FastExportOptions): FastExportJob {
       },
       audio: {
         codec: mp4 ? "aac" : "opus",
-        ...(cuts.length ? { forceTranscode: true, process: retimeAudio(opts.range, cuts) } : {}),
+        ...(edited ? { forceTranscode: true, process: retimeAudio(opts.range, cuts, speeds) } : {}),
       },
     });
     if (!conversion.isValid) throw new Error("This video can't be converted in this browser.");

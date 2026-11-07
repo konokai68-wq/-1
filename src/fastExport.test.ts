@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planOutput, sourceTime } from "./fastExport";
+import { frameSlotter, planOutput, sourceTime } from "./fastExport";
 
 describe("planOutput", () => {
   it("prefers MP4/H.264 when AAC is available for the soundtrack", () => {
@@ -24,5 +24,16 @@ describe("sourceTime", () => {
   it("maps output time back onto the source timeline", () => {
     expect(sourceTime(0, 1.5)).toBe(1.5);
     expect(sourceTime(2.25, 1.5)).toBe(3.75);
+  });
+});
+
+describe("frameSlotter", () => {
+  it("snaps to the frame grid and drops frames that land in a filled slot", () => {
+    const slot = frameSlotter(30);
+    expect(slot(0)).toBe(0);
+    expect(slot(0.25 / 30)).toBeNull();
+    expect(slot(1 / 30 + 0.001)).toBeCloseTo(1 / 30);
+    expect(slot(1.4 / 30)).toBeNull();
+    expect(slot(3 / 30)).toBeCloseTo(3 / 30);
   });
 });

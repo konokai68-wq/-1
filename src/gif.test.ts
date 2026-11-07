@@ -48,3 +48,14 @@ describe("planGif with cuts", () => {
     expect(gifTooLong({ start: 0, end: GIF_MAX_SECONDS + 5 }, [{ start: 0, end: 6 }])).toBe(false);
   });
 });
+
+describe("planGif with speed-ups", () => {
+  it("samples sped-up parts more sparsely and shortens the GIF", () => {
+    const plan = planGif({ start: 0, end: 4 }, 10, [], [{ start: 1, end: 3, rate: 4 }]);
+    expect(plan.times).toHaveLength(25);
+    expect(plan.times[10]).toBeCloseTo(1);
+    expect(plan.times[11]).toBeCloseTo(1.4);
+    expect(plan.times[15]).toBeCloseTo(3);
+    expect(gifTooLong({ start: 0, end: GIF_MAX_SECONDS + 5 }, [], [{ start: 0, end: 10, rate: 2 }])).toBe(false);
+  });
+});

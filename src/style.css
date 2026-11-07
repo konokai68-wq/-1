@@ -9,6 +9,7 @@
   --cue-ink: #ffffff;
   --rec: #e5484d;
   --zoom: #f2a33a;
+  --speed: #1fa595;
   --radius-control: 7px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink);
@@ -109,10 +110,11 @@ button, select, input, label.btn { font: inherit; color: inherit; }
 }
 .icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .time { font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--ink-soft); white-space: nowrap; }
-.track { position: relative; flex: 1; height: 50px; }
+.track { position: relative; flex: 1; height: 64px; }
 .lane { position: absolute; left: 0; right: 0; height: 12px; touch-action: none; }
 .zooms { top: 2px; }
 .cuts { top: 17px; }
+.speeds { top: 32px; }
 .lane span { position: absolute; top: 0; height: 12px; border-radius: 4px; }
 .zooms span { background: var(--zoom); }
 .cuts span {
@@ -127,7 +129,15 @@ button, select, input, label.btn { font: inherit; color: inherit; }
   content: ""; position: absolute; top: 4px; bottom: 4px; left: 6px; width: 2px;
   border-radius: 1px; background: rgba(42, 26, 0, 0.55);
 }
-.cuts .grip::after { background: rgba(255, 255, 255, 0.85); }
+.speeds span {
+  background: var(--speed);
+}
+/* Rate label ("4×") centred in the bar. */
+.speeds span::before {
+  content: attr(data-rate); position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 9px; font-weight: 700; line-height: 1; color: #fff; pointer-events: none;
+}
+.cuts .grip::after, .speeds .grip::after { background: rgba(255, 255, 255, 0.85); }
 .lane .grip[data-edge="start"] { left: -5px; }
 .lane .grip[data-edge="end"] { right: -5px; }
 .lane.dragging, .lane.dragging .grip { cursor: ew-resize; }
@@ -204,6 +214,8 @@ select {
 .zoom-list button:hover { color: var(--ink); }
 .zoom-list select { padding: 2px 4px; font-size: 0.8125rem; }
 .cut-list li { border-left: 3px solid var(--rec); }
+.speed-list li { border-left: 3px solid var(--speed); }
+.speed-list li.active { border-color: var(--speed); }
 .cut-len { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .trim-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.875rem; color: var(--ink-soft); }
 .trim-row b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; margin-left: 4px; }
