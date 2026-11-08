@@ -33,7 +33,8 @@ Everything runs locally; no server, no account.
 - [x] Save / load projects locally (IndexedDB autosave of the last project, *Resume last project* / *Discard* on the start screen)
 
 ## Phase 4 — Launch & growth
-- [ ] Hosted demo on GitHub Pages, demo GIF in README
+- [x] Demo GIF and fresh screenshot in README, made with Panreel itself (`scripts/make-demo.mjs`)
+- [ ] Hosted demo on GitHub Pages (workflow ready; the owner enables Pages)
 - [ ] Landing section, social preview image
 - [ ] Translations (Japanese first)
 - [ ] Launch posts drafted (owner posts them)

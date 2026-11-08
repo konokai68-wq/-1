@@ -4,7 +4,11 @@
 
 Panreel is a lightweight, browser-only alternative to paid screen-recording studios such as Screen Studio. Record your screen (or drop in an existing clip), put it on a clean backdrop with rounded corners and a soft shadow, add smooth zooms to the moments that matter, and export. No install, no account, no upload: your video never leaves your device.
 
-![Panreel editor with a recording on a gradient backdrop and one zoom on the timeline](docs/screenshot.png)
+![A short task-list screencast turned into a demo by Panreel: gradient backdrop, a zoom on the new task, a 4× speed-up while typing, and a callout with an arrow](docs/demo.gif)
+
+*This GIF was made with Panreel itself — a zoom, a speed-up and a text callout with an arrow, exported as a GIF.*
+
+![The Panreel editor: preview with a callout and arrow, timeline lanes for zooms, speed-ups and text, and the inspector](docs/screenshot.png)
 
 ## What it does today
 
@@ -58,10 +62,11 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 | `npm run dev` | Start the dev server |
 | `npm test` | Run unit tests (Vitest) |
 | `npm run build` | Type-check and build the static site into `dist/` |
+| `node scripts/make-demo.mjs` | Rebuild `docs/demo.gif` and `docs/screenshot.png` with the built app (needs Playwright + Chromium; run `npm run build` first) |
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a cursor highlight, a faster export in a worker, and the hosted demo.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: the hosted demo on GitHub Pages, a social preview image, a faster export in a worker, and a cursor highlight.
 
 ## Credits
 

@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-08 13:00 JST — demo GIF made with Panreel
+- `scripts/make-demo.mjs` (Playwright): draws a 9 s made-up task-list screencast on a canvas, records it, opens it in the built app and, through the normal UI, adds a backdrop, a zoom, a 4× speed-up and a callout with an arrow, then exports `docs/demo.gif` (854×480, 7.5 s, 3.6 MB) and a new `docs/screenshot.png`. Both are in the README.
+- Fix: a text callout's row (time, style, size, Arrow, Remove) was wider than the inspector and pushed the whole panel sideways when its text box was focused; the row now wraps.
+- Checked: GIF frames at 0.5 / 2 / 2.6 / 6.5 s show the zoom easing in on the new task, the speed-up and the arrow. Tests: 113 passing.
+- Next: social preview image, then faster export in a worker or cursor highlight.
+
 ## 2026-11-08 09:00 JST — autosave and resume
 - The last project is autosaved to IndexedDB (`projectStore.ts`: a small "meta" JSON every 1.5 s when it changed, the video / camera / backdrop Blobs only when they change). The start screen offers *Resume last project* (name, length, edits, "saved 5 min ago") or *Discard*.
 - `project.ts` (pure, tested): `sanitizeProject` clamps every span into the clip, drops broken entries and falls back to defaults, so a stale or damaged save never breaks the editor; `editSummary`, `timeAgo`.
