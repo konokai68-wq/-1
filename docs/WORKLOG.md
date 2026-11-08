@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-08 18:00 JST — social preview card
+- `public/social-preview.png` (1280×640, 466 KB): wordmark, headline, the four timeline-lane colours as a feature list, and the README screenshot; rebuilt by `scripts/make-social.mjs` (Playwright).
+- Open Graph / Twitter tags: `siteMeta.ts` (pure, tested) + a Vite `transformIndexHtml` hook. In Actions, `GITHUB_REPOSITORY` gives the absolute Pages URL for `og:image` / `og:url`, so a repo rename needs no code change; local builds get title / description only.
+- Checked: build with `GITHUB_REPOSITORY=konokai68-wq/-1` puts `https://konokai68-wq.github.io/-1/social-preview.png` in `dist/index.html`; the PNG is copied to `dist/`. Tests: 118 passing.
+- Next: faster export in a worker, or cursor highlight.
+
 ## 2026-11-08 13:00 JST — demo GIF made with Panreel
 - `scripts/make-demo.mjs` (Playwright): draws a 9 s made-up task-list screencast on a canvas, records it, opens it in the built app and, through the normal UI, adds a backdrop, a zoom, a 4× speed-up and a callout with an arrow, then exports `docs/demo.gif` (854×480, 7.5 s, 3.6 MB) and a new `docs/screenshot.png`. Both are in the README.
 - Fix: a text callout's row (time, style, size, Arrow, Remove) was wider than the inspector and pushed the whole panel sideways when its text box was focused; the row now wraps.

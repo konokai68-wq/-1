@@ -63,10 +63,13 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 | `npm test` | Run unit tests (Vitest) |
 | `npm run build` | Type-check and build the static site into `dist/` |
 | `node scripts/make-demo.mjs` | Rebuild `docs/demo.gif` and `docs/screenshot.png` with the built app (needs Playwright + Chromium; run `npm run build` first) |
+| `node scripts/make-social.mjs` | Rebuild `public/social-preview.png`, the 1280×640 link-preview card, from the screenshot (needs Playwright + Chromium) |
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: the hosted demo on GitHub Pages, a social preview image, a faster export in a worker, and a cursor highlight.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: the hosted demo on GitHub Pages, a faster export in a worker, a cursor highlight, and a Japanese translation.
+
+Shared links to the hosted site show a preview card (`public/social-preview.png`). The Open Graph / Twitter tags are added at build time; in GitHub Actions the image URL is worked out from the repository name, so the card keeps working after a rename.
 
 ## Credits
 

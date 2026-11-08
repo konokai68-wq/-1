@@ -35,6 +35,7 @@ Everything runs locally; no server, no account.
 ## Phase 4 — Launch & growth
 - [x] Demo GIF and fresh screenshot in README, made with Panreel itself (`scripts/make-demo.mjs`)
 - [ ] Hosted demo on GitHub Pages (workflow ready; the owner enables Pages)
-- [ ] Landing section, social preview image
+- [x] Social preview image (`public/social-preview.png`, `scripts/make-social.mjs`) and Open Graph / Twitter tags built from the repo name
+- [ ] Landing section
 - [ ] Translations (Japanese first)
 - [ ] Launch posts drafted (owner posts them)
