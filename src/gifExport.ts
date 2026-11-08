@@ -5,7 +5,7 @@
  * written with gifenc. Loaded on demand.
  */
 import { GIFEncoder, applyPalette, quantize } from "gifenc";
-import { BlobSource, CanvasSink, Input, MATROSKA, MP4, QTFF, WEBM } from "mediabunny";
+import { sourceFrames } from "./frameSource";
 import { planGif } from "./gif";
 import type { Span, SpeedSpan } from "./cuts";
 import type { Size } from "./layout";
@@ -20,8 +20,6 @@ export interface GifExportOptions {
   draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
   onProgress: (fraction: number) => void;
 }
-
-type Frame = { image: CanvasImageSource; size: Size };
 
 class Cancelled extends Error {}
 
@@ -66,67 +64,4 @@ export function exportGif(opts: GifExportOptions): ExportJob {
       cancelled = true;
     },
   };
-}
-
-async function* sourceFrames(source: Blob, times: number[], check: () => void): AsyncGenerator<Frame | null> {
-  if (typeof VideoDecoder !== "undefined") {
-    const input = new Input({ source: new BlobSource(source), formats: [MP4, QTFF, WEBM, MATROSKA] });
-    let yielded = 0;
-    try {
-      const track = await input.getPrimaryVideoTrack();
-      if (track && (await track.canDecode())) {
-        const sink = new CanvasSink(track, { poolSize: 2 });
-        for await (const wrapped of sink.canvasesAtTimestamps(times)) {
-          check();
-          yielded++;
-          yield wrapped ? { image: wrapped.canvas as CanvasImageSource, size: { width: wrapped.canvas.width, height: wrapped.canvas.height } } : null;
-        }
-        return;
-      }
-    } catch (err) {
-      // Decoding failed before any frame was produced: fall back to seeking.
-      if (err instanceof Cancelled || yielded > 0) throw err;
-      console.warn("WebCodecs decoding failed, seeking a <video> instead.", err);
-    } finally {
-      input.dispose();
-    }
-  }
-  yield* seekFrames(source, times, check);
-}
-
-async function* seekFrames(source: Blob, times: number[], check: () => void): AsyncGenerator<Frame> {
-  const url = URL.createObjectURL(source);
-  const v = document.createElement("video");
-  v.muted = true;
-  v.preload = "auto";
-  v.src = url;
-  try {
-    await once(v, "loadeddata");
-    const size = { width: v.videoWidth, height: v.videoHeight };
-    for (const t of times) {
-      check();
-      v.currentTime = t;
-      await once(v, "seeked");
-      yield { image: v, size };
-    }
-  } finally {
-    v.removeAttribute("src");
-    v.load();
-    URL.revokeObjectURL(url);
-  }
-}
-
-function once(el: HTMLMediaElement, type: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const ok = () => {
-      el.removeEventListener("error", bad);
-      resolve();
-    };
-    const bad = () => {
-      el.removeEventListener(type, ok);
-      reject(new Error("This video can't be read for GIF export."));
-    };
-    el.addEventListener(type, ok, { once: true });
-    el.addEventListener("error", bad, { once: true });
-  });
 }
