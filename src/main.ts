@@ -59,6 +59,7 @@ const zoomLane = $("zoomLane");
 const zoomList = $<HTMLUListElement>("zoomList");
 const zoomEmpty = $("zoomEmpty");
 const zoomTip = $("zoomTip");
+const autoZoomBtn = $<HTMLButtonElement>("autoZoom");
 const addCutBtn = $<HTMLButtonElement>("addCut");
 const cutLane = $("cutLane");
 const cutList = $<HTMLUListElement>("cutList");
@@ -405,6 +406,7 @@ redoBtn.addEventListener("click", redo);
 // ---- Loading media -----------------------------------------------------------
 
 async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): Promise<boolean> {
+  autoZoomJob?.cancel();
   try {
     await loadVideo(video, blob);
     sourceBlob = blob;
@@ -421,7 +423,7 @@ async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): 
     history.clear();
     syncHistoryUi();
     empty.hidden = true;
-    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, addCutBtn, addSpeedBtn, addTextBtn, setInBtn, setOutBtn]) el.disabled = false;
+    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, autoZoomBtn, addCutBtn, addSpeedBtn, addTextBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
     renderTrimUi();
     renderCutUi();
@@ -811,6 +813,45 @@ addZoomBtn.addEventListener("click", () => {
   checkpoint();
   zooms = next;
   lastActive = -2;
+});
+
+// Auto zoom: scan the trimmed clip for local changes and add zooms there.
+let autoZoomJob: { cancel(): void } | null = null;
+
+autoZoomBtn.addEventListener("click", async () => {
+  if (autoZoomJob) return autoZoomJob.cancel();
+  if (!sourceBlob) return;
+  autoZoomBtn.textContent = "Cancel scan";
+  notify("Looking for moments to zoom in on…", true);
+  const { scanForZooms } = await import("./autoZoomScan");
+  const job = scanForZooms({
+    source: sourceBlob,
+    range: { ...trim },
+    cuts,
+    existing: zooms,
+    onProgress: (f) => notify(`Looking for moments to zoom in on… ${Math.round(f * 100)}%`, true),
+  });
+  autoZoomJob = job;
+  let found: ZoomSegment[] | null = null;
+  let failed = false;
+  try {
+    found = await job.done;
+  } catch (err) {
+    console.error(err);
+    failed = true;
+  }
+  autoZoomJob = null;
+  autoZoomBtn.textContent = "Auto zoom";
+  if (failed) return notify("Auto zoom couldn't read this video in this browser.");
+  if (!found) return notify("Auto zoom cancelled.");
+  if (found.length === 0) return notify("No spots to zoom on: nothing changed in a small enough area. Add zooms by hand instead.");
+  // Zooms added by hand while scanning win over suggestions that overlap them.
+  found = found.filter((f) => !zooms.some((z) => f.start < z.end && z.start < f.end));
+  if (found.length === 0) return notify("Auto zoom found only spots that already have a zoom.");
+  checkpoint();
+  zooms = [...zooms, ...found].sort((a, b) => a.start - b.start);
+  lastActive = -2;
+  notify(`Added ${found.length} zoom${found.length === 1 ? "" : "s"}. Adjust or remove them on the timeline, or press Ctrl/⌘ Z to undo.`);
 });
 
 function removeZoom(i: number) {

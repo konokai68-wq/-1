@@ -316,3 +316,6 @@ kbd {
 label.link-btn { cursor: pointer; }
 #canvas.over-text { cursor: move; }
 #canvas.moving-text { cursor: grabbing; }
+.auto-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.auto-zoom .btn { flex: none; }
+.auto-zoom .note { margin: 0; }
