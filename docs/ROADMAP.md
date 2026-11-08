@@ -29,6 +29,7 @@ Everything runs locally; no server, no account.
 - [x] Speed-up segments (S / *Speed up*, 2× / 4× / 8×, drag on the timeline; muted, frames and GIF timing squeezed in all exports)
 - [x] Text callouts (T / *Add text*, Dark / Light / Blue, S / M / L, drag on the preview, fade in / out; in all exports)
 - [x] Arrow annotations (A / *Arrow* on a callout; drag the tip on the preview; outlined, fades with the callout; in all exports)
+- [x] Auto zoom: scan the clip for local on-screen changes and add zooms aimed at them (`autoZoom.ts`, `autoZoomScan.ts`)
 - [ ] Optional cursor highlight when recording this browser tab
 - [x] Save / load projects locally (IndexedDB autosave of the last project, *Resume last project* / *Discard* on the start screen)
 

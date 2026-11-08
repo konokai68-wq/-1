@@ -17,6 +17,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Canvas sizes** for every platform: 16:9, 1:1, 9:16 and 4:3
 - **Smooth zooms**: press *Add zoom here*, click the preview to aim it, choose 1.4×–3×. Zooms ease in and out automatically
 - **Trim** the start and end — set them to the playhead with a button or the <kbd>I</kbd> / <kbd>O</kbd> keys
+- **Auto zoom**: one click scans the clip for moments where only part of the screen changes (a menu opens, text is typed) and adds zooms aimed at them — no cursor tracking or extension needed. Tweak or undo them like any other zoom
 - **Resize zooms** by dragging the ends of their bars on the timeline
 - **Cut out** the boring parts: press *Cut here* (or <kbd>X</kbd>) and drag the red bar's ends to choose what to remove. Playback skips cuts and every export leaves them out, with the sound kept in sync
 - **Speed up** slow stretches (installs, loading, typing): press *Speed up* (or <kbd>S</kbd>), pick 2×, 4× or 8× and drag the teal bar's ends. Sped-up parts play fast and silent in the preview and in every export

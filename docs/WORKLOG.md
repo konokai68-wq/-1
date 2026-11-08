@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-08 22:00 JST — auto zoom
+- *Auto zoom* (Zooms panel): samples the trimmed clip at 4 fps as 160 px greyscale frames, measures what changed between neighbours (`autoZoom.ts`, pure and tested) and turns local changes into zooms: aimed at the changed area, 2.4× / 1.8× / 1.4× by its size, from 0.5 s before to 1.6 s after, 2–8 s long. Page changes and scrolls (over 22 % of pixels) are ignored; a popup that opens and closes in the same spot is one zoom; never overlaps existing zooms; one undo step; cancellable.
+- Frame pulling moved from `gifExport.ts` to a shared `frameSource.ts` (WebCodecs, with `<video>` seeking as the fallback).
+- Checked in headless Chromium: 9 s clip with a popup at 2–3.5 s, a page change at 5 s and typing from 6.5 s → 2 zooms (1.5–5.1 s on the popup, 6–8 s on the typing) in about 3 s; Ctrl+Z removes both. Tests: 136 passing.
+- Next: faster export in a worker, or a Japanese UI.
+
 ## 2026-11-08 18:00 JST — social preview card
 - `public/social-preview.png` (1280×640, 466 KB): wordmark, headline, the four timeline-lane colours as a feature list, and the README screenshot; rebuilt by `scripts/make-social.mjs` (Playwright).
 - Open Graph / Twitter tags: `siteMeta.ts` (pure, tested) + a Vite `transformIndexHtml` hook. In Actions, `GITHUB_REPOSITORY` gives the absolute Pages URL for `og:image` / `og:url`, so a repo rename needs no code change; local builds get title / description only.
