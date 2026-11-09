@@ -1,5 +1,5 @@
 import "./style.css";
-import { LANG_NAMES, initLang, lang, onLangChange, setLang, t } from "./i18n";
+import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
@@ -184,16 +184,18 @@ for (const b of BACKDROPS) {
   const el = document.createElement("button");
   el.type = "button";
   el.className = "swatch";
-  el.title = b.name;
+  el.title = tOr(`bg.${b.id}`, b.name);
+  el.dataset.i18nTitle = el.dataset.i18nAria = `bg.${b.id}`;
   el.setAttribute("role", "radio");
-  el.setAttribute("aria-label", b.name);
+  el.setAttribute("aria-label", el.title);
   el.style.background = `linear-gradient(135deg, ${b.stops.join(", ")})`;
   el.setAttribute("aria-checked", String(b === style.backdrop));
   el.addEventListener("click", () => setBackdrop(b, el));
   swatches.append(el);
 }
 swatches.setAttribute("role", "radiogroup");
-swatches.setAttribute("aria-label", "Backdrop");
+swatches.setAttribute("aria-label", t("backdrop"));
+swatches.dataset.i18nAria = "backdrop";
 
 /** Make `b` the active backdrop and mark `picked` as the selected control. */
 function setBackdrop(b: Backdrop, picked: Element) {
@@ -220,7 +222,7 @@ async function useBackdropImage(file: Blob) {
     await img.decode();
   } catch {
     URL.revokeObjectURL(url);
-    notify("Could not read that image. Try a PNG, JPEG or WebP file.");
+    notify(t("msg.badImage"));
     return;
   }
   if (backdropUrl) URL.revokeObjectURL(backdropUrl);
@@ -239,7 +241,11 @@ bgFile.addEventListener("change", () => {
   bgFile.value = "";
 });
 
-for (const a of ASPECTS) aspectSelect.add(new Option(a.label, a.id));
+for (const a of ASPECTS) {
+  const o = new Option(tOr(`aspect.${a.id}`, a.label), a.id);
+  o.dataset.i18n = `aspect.${a.id}`;
+  aspectSelect.add(o);
+}
 aspectSelect.addEventListener("change", () => {
   const a = ASPECTS.find((x) => x.id === aspectSelect.value)!;
   canvas.width = a.size.width;
@@ -268,7 +274,8 @@ function saveSettings() {
   }
 }
 
-function radio(group: HTMLElement, name: string, value: string, label: string, checked: boolean, onPick: () => void) {
+/** A labelled radio button; `key` (when it is a dictionary key) keeps the label translated. */
+function radio(group: HTMLElement, name: string, value: string, label: string, checked: boolean, onPick: () => void, key?: string) {
   const el = document.createElement("label");
   const input = document.createElement("input");
   input.type = "radio";
@@ -276,7 +283,10 @@ function radio(group: HTMLElement, name: string, value: string, label: string, c
   input.value = value;
   input.checked = checked;
   input.addEventListener("change", onPick);
-  el.append(input, label);
+  const text = document.createElement("span");
+  text.textContent = key ? tOr(key, label) : label;
+  if (key) text.dataset.i18n = key;
+  el.append(input, text);
   group.append(el);
 }
 
@@ -285,7 +295,7 @@ for (const f of FORMATS) {
     settings = { ...settings, format: f.id };
     saveSettings();
     updateExportInfo();
-  });
+  }, `format.${f.id}`);
 }
 for (const r of RESOLUTIONS) {
   radio(resolutionGroup, "resolution", r.id, r.label, r.id === settings.resolution, () => {
@@ -386,16 +396,16 @@ function restore(s: EditState) {
 
 function undo() {
   const s = history.undo(snapshot());
-  if (!s) return notify("Nothing to undo.");
+  if (!s) return notify(t("msg.nothingUndo"));
   restore(s);
-  notify("Undone.");
+  notify(t("msg.undone"));
 }
 
 function redo() {
   const s = history.redo(snapshot());
-  if (!s) return notify("Nothing to redo.");
+  if (!s) return notify(t("msg.nothingRedo"));
   restore(s);
-  notify("Redone.");
+  notify(t("msg.redone"));
 }
 
 function syncHistoryUi() {
@@ -432,7 +442,7 @@ async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): 
     renderCutUi();
     renderSpeedUi();
     renderTextUi();
-    notify(`Loaded a ${formatTime(video.duration)} clip. Add zooms, pick a backdrop, then export.`);
+    notify(t("msg.loaded", { len: formatTime(video.duration) }));
     return true;
   } catch (err) {
     notify((err as Error).message);
@@ -459,7 +469,7 @@ canvasWrap.addEventListener("drop", (e) => {
   const img = files.find((x) => x.type.startsWith("image/"));
   if (f) void open(f, null, f.name);
   else if (img) void useBackdropImage(img);
-  else notify("Drop a video (WebM or MP4) to edit, or an image to use as the backdrop.");
+  else notify(t("msg.dropHint"));
 });
 
 // ---- Camera bubble -----------------------------------------------------------
@@ -473,7 +483,7 @@ async function setCamera(blob: Blob | null) {
       camVideo.muted = true;
       cameraBlob = blob;
     } catch {
-      notify("That camera clip could not be opened. Try a WebM or MP4 file.");
+      notify(t("msg.badCamera"));
     }
   } else {
     camVideo.removeAttribute("src");
@@ -489,7 +499,7 @@ const SHAPES: { id: BubbleShape; label: string }[] = [
   { id: "rounded", label: "Rounded" },
 ];
 for (const sh of SHAPES) {
-  radio(camShape, "camShape", sh.id, sh.label, sh.id === bubble.shape, () => (bubble.shape = sh.id));
+  radio(camShape, "camShape", sh.id, sh.label, sh.id === bubble.shape, () => (bubble.shape = sh.id), `shape.${sh.id}`);
 }
 
 const CORNERS: { id: Corner; label: string }[] = [
@@ -502,9 +512,10 @@ for (const c of CORNERS) {
   const b = document.createElement("button");
   b.type = "button";
   b.dataset.corner = c.id;
-  b.title = c.label;
+  b.title = tOr(`corner.${c.id}`, c.label);
+  b.dataset.i18nTitle = b.dataset.i18nAria = `corner.${c.id}`;
   b.setAttribute("role", "radio");
-  b.setAttribute("aria-label", c.label);
+  b.setAttribute("aria-label", b.title);
   b.addEventListener("click", () => setCorner(c.id));
   camCorner.append(b);
 }
@@ -520,15 +531,15 @@ camMirror.addEventListener("change", () => (bubble.mirror = camMirror.checked));
 camSize.addEventListener("input", () => (bubble.size = Number(camSize.value)));
 camRemove.addEventListener("click", () => {
   void setCamera(null);
-  notify("Camera removed from this video.");
+  notify(t("msg.camRemoved"));
 });
 camFile.addEventListener("change", async () => {
   const f = camFile.files?.[0];
   camFile.value = "";
   if (!f) return;
-  if (!hasVideo) return notify("Open or record a screen video first, then add the camera clip.");
+  if (!hasVideo) return notify(t("msg.camNeedsVideo"));
   await setCamera(f);
-  if (cameraBlob) notify("Camera added. It starts at the same moment as the screen video.");
+  if (cameraBlob) notify(t("msg.camAdded"));
 });
 
 /** Is the canvas point (in canvas pixels) on the visible bubble? */
@@ -637,13 +648,13 @@ recordBtn.addEventListener("click", async () => {
     return;
   }
   if (!navigator.mediaDevices?.getDisplayMedia) {
-    notify("This browser cannot record the screen. Try Chrome, Edge or Firefox on a computer.");
+    notify(t("msg.noRecord"));
     return;
   }
   try {
     recording = await recordScreen(true, camRecord.checked);
   } catch {
-    notify("Recording did not start. Choose a screen, window or tab to share.");
+    notify(t("msg.recNotStarted"));
     return;
   }
   setRecording(true);
@@ -729,7 +740,8 @@ for (const s of SHORTCUTS) {
     dt.append(kbd);
   }
   const dd = document.createElement("dd");
-  dd.textContent = s.label;
+  dd.textContent = tOr(`sc.${s.id}`, s.label);
+  dd.dataset.i18n = `sc.${s.id}`;
   shortcutList.append(dt, dd);
 }
 
@@ -785,7 +797,7 @@ function setTrim(edge: Edge) {
   checkpoint();
   trim = setTrimEdge(trim, edge, video.currentTime, video.duration);
   renderTrimUi();
-  notify(edge === "start" ? `Clip now starts at ${formatTimeFine(trim.start)}.` : `Clip now ends at ${formatTimeFine(trim.end)}.`);
+  notify(t(edge === "start" ? "msg.trimStart" : "msg.trimEnd", { t: formatTimeFine(edge === "start" ? trim.start : trim.end) }));
 }
 
 setInBtn.addEventListener("click", () => setTrim("start"));
@@ -794,7 +806,7 @@ resetTrimBtn.addEventListener("click", () => {
   checkpoint();
   trim = fullTrim(video.duration);
   renderTrimUi();
-  notify("Keeping the whole clip.");
+  notify(t("msg.trimReset"));
 });
 
 function renderTrimUi() {
@@ -812,7 +824,7 @@ function renderTrimUi() {
 addZoomBtn.addEventListener("click", () => {
   const next = addZoom(zooms, video.currentTime, video.duration);
   if (next.length === zooms.length) {
-    notify("There is already a zoom here. Move the playhead to an empty spot.");
+    notify(t("msg.zoomExists"));
     return;
   }
   checkpoint();
@@ -827,14 +839,14 @@ autoZoomBtn.addEventListener("click", async () => {
   if (autoZoomJob) return autoZoomJob.cancel();
   if (!sourceBlob) return;
   autoZoomBtn.textContent = t("auto.cancel");
-  notify("Looking for moments to zoom in on…", true);
+  notify(t("msg.autoScanning"), true);
   const { scanForZooms } = await import("./autoZoomScan");
   const job = scanForZooms({
     source: sourceBlob,
     range: { ...trim },
     cuts,
     existing: zooms,
-    onProgress: (f) => notify(`Looking for moments to zoom in on… ${Math.round(f * 100)}%`, true),
+    onProgress: (f) => notify(t("msg.autoProgress", { pct: Math.round(f * 100) }), true),
   });
   autoZoomJob = job;
   let found: ZoomSegment[] | null = null;
@@ -847,16 +859,16 @@ autoZoomBtn.addEventListener("click", async () => {
   }
   autoZoomJob = null;
   autoZoomBtn.textContent = t("auto.zoom");
-  if (failed) return notify("Auto zoom couldn't read this video in this browser.");
-  if (!found) return notify("Auto zoom cancelled.");
-  if (found.length === 0) return notify("No spots to zoom on: nothing changed in a small enough area. Add zooms by hand instead.");
+  if (failed) return notify(t("msg.autoFailed"));
+  if (!found) return notify(t("msg.autoCancelled"));
+  if (found.length === 0) return notify(t("msg.autoNone"));
   // Zooms added by hand while scanning win over suggestions that overlap them.
   found = found.filter((f) => !zooms.some((z) => f.start < z.end && z.start < f.end));
-  if (found.length === 0) return notify("Auto zoom found only spots that already have a zoom.");
+  if (found.length === 0) return notify(t("msg.autoOverlap"));
   checkpoint();
   zooms = [...zooms, ...found].sort((a, b) => a.start - b.start);
   lastActive = -2;
-  notify(`Added ${found.length} zoom${found.length === 1 ? "" : "s"}. Adjust or remove them on the timeline, or press Ctrl/⌘ Z to undo.`);
+  notify(found.length === 1 ? t("msg.autoAdded1") : t("msg.autoAdded", { n: found.length }));
 });
 
 function removeZoom(i: number) {
@@ -869,22 +881,22 @@ function removeAtPlayhead() {
   const c = cutIndexAt(cuts, video.currentTime);
   if (c >= 0) {
     removeCut(c);
-    return notify("Cut removed. Press Ctrl/⌘ Z to bring it back.");
+    return notify(t("msg.cutRemoved"));
   }
   const s = cutIndexAt(speeds, video.currentTime);
   if (s >= 0) {
     removeSpeed(s);
-    return notify("Speed-up removed. Press Ctrl/⌘ Z to bring it back.");
+    return notify(t("msg.speedRemoved"));
   }
   const n = textIndexAt(texts, video.currentTime);
   if (n >= 0) {
     removeText(n);
-    return notify("Text removed. Press Ctrl/⌘ Z to bring it back.");
+    return notify(t("msg.textRemoved"));
   }
   const i = zoomIndexAt(zooms, video.currentTime);
-  if (i < 0) return notify("No zoom, cut, speed-up or text at the playhead.");
+  if (i < 0) return notify(t("msg.nothingHere"));
   removeZoom(i);
-  notify("Zoom removed. Press Ctrl/⌘ Z to bring it back.");
+  notify(t("msg.zoomRemoved"));
 }
 
 canvas.addEventListener("click", (e) => {
@@ -903,7 +915,7 @@ canvas.addEventListener("click", (e) => {
   const fy = (cy - f.y) / f.height;
   checkpoint();
   zooms[i] = { ...zooms[i], focusX: clamp01(fx), focusY: clamp01(fy) };
-  notify("Zoom aimed.");
+  notify(t("msg.zoomAimed"));
 });
 
 // Drag a zoom's, cut's or speed-up's edge on the timeline to change its length.
@@ -956,8 +968,8 @@ function laneDrag(lane: HTMLElement, kind: LaneKind) {
     if (kind === "cut") renderCutUi();
     if (kind === "speed") renderSpeedUi();
     if (kind === "text") renderTextUi();
-    const what = { zoom: "Zoom now runs", cut: "Cut now removes", speed: "Speed-up now covers", text: "Text now shows" }[kind];
-    if (span) notify(`${what} ${formatTimeFine(span.start)}–${formatTimeFine(span.end)}.`);
+    const what = ({ zoom: "msg.spanZoom", cut: "msg.spanCut", speed: "msg.spanSpeed", text: "msg.spanText" } as const)[kind];
+    if (span) notify(t(what, { a: formatTimeFine(span.start), b: formatTimeFine(span.end) }));
   };
   lane.addEventListener("pointerup", end);
   lane.addEventListener("pointercancel", end);
@@ -1031,13 +1043,13 @@ function playFrom(t: number) {
 addCutBtn.addEventListener("click", () => {
   const next = addCut(cuts, video.currentTime, video.duration);
   if (next.length === cuts.length) {
-    notify("There is already a cut here. Move the playhead to a part you want to keep.");
+    notify(t("msg.cutExists"));
     return;
   }
   checkpoint();
   cuts = next;
   renderCutUi();
-  notify("Cut 1 s. Drag the red bar's ends on the timeline to cut more or less.");
+  notify(t("msg.cutAdded"));
 });
 
 function removeCut(i: number) {
@@ -1090,13 +1102,13 @@ function renderCutResult() {
 addSpeedBtn.addEventListener("click", () => {
   const next = addSpeed(speeds, video.currentTime, video.duration);
   if (next.length === speeds.length) {
-    notify("There is already a speed-up here. Move the playhead to a normal-speed part.");
+    notify(t("msg.speedExists"));
     return;
   }
   checkpoint();
   speeds = next;
   renderSpeedUi();
-  notify("Sped up 2 s at 4×. Drag the teal bar's ends on the timeline to cover more or less.");
+  notify(t("msg.speedAdded"));
 });
 
 function removeSpeed(i: number) {
@@ -1147,7 +1159,7 @@ function renderSpeedUi() {
 addTextBtn.addEventListener("click", () => {
   const next = addText(texts, video.currentTime, video.duration);
   if (next.length === texts.length) {
-    notify("There is already text here. Move the playhead to a spot without text.");
+    notify(t("msg.textExists"));
     return;
   }
   checkpoint();
@@ -1159,7 +1171,7 @@ addTextBtn.addEventListener("click", () => {
   const input = textList.querySelector<HTMLInputElement>(`input[data-index="${added ? texts.indexOf(added) : 0}"]`);
   input?.focus();
   input?.select();
-  notify("Text added for 3 s. Type your words, drag the text on the preview to move it.");
+  notify(t("msg.textAdded"));
 });
 
 /** A: toggle the arrow on the callout at the playhead, or add a callout with an arrow. */
@@ -1168,7 +1180,7 @@ function arrowAtPlayhead() {
   let i = textIndexAt(texts, video.currentTime);
   if (i < 0) {
     const next = addText(texts, video.currentTime, video.duration, "Look here");
-    if (next.length === texts.length) return notify("No room for text here. Move the playhead.");
+    if (next.length === texts.length) return notify(t("msg.textNoRoom"));
     checkpoint();
     const added = next.find((n) => !texts.includes(n))!;
     texts = next;
@@ -1179,7 +1191,7 @@ function arrowAtPlayhead() {
   video.pause();
   texts[i] = toggleArrow(texts[i]);
   renderTextUi();
-  notify(texts[i].arrow ? "Arrow added. Drag its tip on the preview to point at something." : "Arrow removed.");
+  notify(t(texts[i].arrow ? "msg.arrowAdded" : "msg.arrowRemoved"));
 }
 
 function removeText(i: number) {
@@ -1282,7 +1294,7 @@ exportBtn.addEventListener("click", async () => {
     return;
   }
   if (keptDuration(trim, cuts) < 0.2) {
-    notify("Everything is cut. Remove a cut or keep more of the clip before exporting.");
+    notify(t("msg.allCut"));
     return;
   }
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
@@ -1308,7 +1320,7 @@ exportBtn.addEventListener("click", async () => {
       video,
       trim,
       render,
-      (f) => notify(`Exporting in real time… ${Math.round(f * 100)}%. Keep this tab open.`, true),
+      (f) => notify(t("msg.realtime", { pct: Math.round(f * 100) }), true),
       settings.frameRate,
     );
     result = { blob: await exporting.done, ext: "webm" };
@@ -1319,16 +1331,16 @@ exportBtn.addEventListener("click", async () => {
   updateExportInfo();
   if (result.blob) {
     download(result.blob, `panreel-${stamp}.${result.ext}`);
-    notify(`Exported ${result.ext.toUpperCase()}. Your video is in your downloads.`);
+    notify(t("msg.exported", { ext: result.ext.toUpperCase() }));
   } else {
-    notify("Export cancelled.");
+    notify(t("msg.exportCancelled"));
   }
 });
 
 async function exportGifPath(stamp: string) {
   if (!sourceBlob) return;
   if (gifTooLong(trim, cuts, speeds)) {
-    notify(`GIFs are limited to ${GIF_MAX_SECONDS} s. Trim the clip (I / O keys) or export a video instead.`);
+    notify(t("msg.gifTooLong", { max: GIF_MAX_SECONDS }));
     return;
   }
   exportBtn.textContent = t("export.cancel");
@@ -1340,7 +1352,7 @@ async function exportGifPath(stamp: string) {
     cuts,
     speeds,
     draw: await styledDraw(),
-    onProgress: (f) => notify(`Exporting GIF… ${Math.round(f * 100)}%`, true),
+    onProgress: (f) => notify(t("msg.gifProgress", { pct: Math.round(f * 100) }), true),
   });
   exporting = job;
   let blob: Blob | null = null;
@@ -1348,16 +1360,16 @@ async function exportGifPath(stamp: string) {
     blob = await job.done;
   } catch (err) {
     console.error(err);
-    notify("GIF export failed in this browser. Try exporting a video instead.");
+    notify(t("msg.gifFailed"));
   }
   releaseExportCamera();
   exporting = null;
   updateExportInfo();
   if (blob) {
     download(blob, `panreel-${stamp}.gif`);
-    notify(`Exported GIF (${(blob.size / 1048576).toFixed(1)} MB). It's in your downloads.`);
+    notify(t("msg.gifDone", { mb: (blob.size / 1048576).toFixed(1) }));
   } else if (!toast.textContent?.startsWith("GIF export failed")) {
-    notify("Export cancelled.");
+    notify(t("msg.exportCancelled"));
   }
 }
 
@@ -1400,7 +1412,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     speeds,
     frameRate: settings.frameRate,
     draw: await styledDraw(),
-    onProgress: (f) => notify(`Exporting ${plan.container.toUpperCase()}… ${Math.round(f * 100)}%`, true),
+    onProgress: (f) => notify(t("msg.progress", { ext: plan.container.toUpperCase(), pct: Math.round(f * 100) }), true),
   });
   exporting = job;
   let blob: Blob | null;
@@ -1462,7 +1474,7 @@ async function autosave() {
     savedMediaVersion = media;
     saveFailed = false;
   } catch {
-    if (!saveFailed) notify("This browser could not keep a copy of the project (storage full or blocked). Export to keep your work.");
+    if (!saveFailed) notify(t("msg.saveFailed"));
     saveFailed = true;
   } finally {
     saving = false;
@@ -1519,7 +1531,7 @@ async function resume() {
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;
   savedJson = JSON.stringify(projectData());
-  notify(`Resumed “${p.name}”. Your edits are saved in this browser as you go.`);
+  notify(t("msg.resumed", { name: p.name }));
 }
 
 async function discard() {

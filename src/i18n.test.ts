@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { LANGS, isLang, missingKeys, pickLang, translate } from "./i18n";
+import { KEYS, LANGS, isKey, isLang, missingKeys, pickLang, tOr, translate, type Key } from "./i18n";
+import { SHORTCUTS } from "./shortcuts";
+import { ASPECTS, BACKDROPS } from "./render";
+import { FORMATS } from "./exportSettings";
 
 describe("pickLang", () => {
   it("prefers the ?lang= query", () => {
@@ -44,5 +47,31 @@ describe("dictionaries", () => {
       const kbds = (s: string) => (s.match(/<kbd>[^<]*<\/kbd>/g) ?? []).sort();
       expect(kbds(translate("ja", k))).toEqual(kbds(translate("en", k)));
     }
+  });
+});
+
+describe("names built at run time", () => {
+  it("every shortcut, backdrop, canvas size and format has a key matching its English text", () => {
+    const pairs: [string, string][] = [
+      ...SHORTCUTS.map((s) => [`sc.${s.id}`, s.label] as [string, string]),
+      ...BACKDROPS.map((b) => [`bg.${b.id}`, b.name] as [string, string]),
+      ...ASPECTS.map((a) => [`aspect.${a.id}`, a.label] as [string, string]),
+      ...FORMATS.map((f) => [`format.${f.id}`, f.label] as [string, string]),
+    ];
+    for (const [key, english] of pairs) {
+      expect(isKey(key), key).toBe(true);
+      expect(translate("en", key as Key)).toBe(english);
+    }
+  });
+  it("tOr falls back for unknown keys", () => {
+    expect(tOr("no.such.key", "Fallback")).toBe("Fallback");
+    expect(tOr("bg.harbor", "x")).toBe("Harbor");
+  });
+});
+
+describe("slots", () => {
+  it("every translation keeps the {slot}s of the English text", () => {
+    const slots = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort();
+    for (const l of LANGS) for (const k of KEYS) expect(slots(translate(l, k)), `${l} ${k}`).toEqual(slots(translate("en", k)));
   });
 });

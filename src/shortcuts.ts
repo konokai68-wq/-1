@@ -28,20 +28,21 @@ export interface KeyInput {
 }
 
 /** Shortcut list shown in the app, in display order. */
-export const SHORTCUTS: readonly { keys: string[]; label: string }[] = [
-  { keys: ["Space"], label: "Play / pause" },
-  { keys: ["←", "→"], label: "Step 0.1 s (Shift: 1 s)" },
-  { keys: ["Home", "End"], label: "Go to clip start / end" },
-  { keys: ["I", "O"], label: "Set clip start / end" },
-  { keys: ["Z"], label: "Add zoom at playhead" },
-  { keys: ["X"], label: "Cut 1 s at playhead" },
-  { keys: ["S"], label: "Speed up 2 s at playhead" },
-  { keys: ["T"], label: "Add text at playhead" },
-  { keys: ["A"], label: "Arrow on / off for text at playhead" },
-  { keys: ["Del"], label: "Remove cut, speed-up, text or zoom at playhead" },
-  { keys: ["Ctrl/⌘ Z"], label: "Undo" },
-  { keys: ["Ctrl/⌘ Shift Z"], label: "Redo" },
-  { keys: ["?"], label: "Show shortcuts" },
+/** `id` names the label's translation (`sc.<id>`); `label` is the English text. */
+export const SHORTCUTS: readonly { id: string; keys: string[]; label: string }[] = [
+  { id: "play", keys: ["Space"], label: "Play / pause" },
+  { id: "step", keys: ["←", "→"], label: "Step 0.1 s (Shift: 1 s)" },
+  { id: "ends", keys: ["Home", "End"], label: "Go to clip start / end" },
+  { id: "trim", keys: ["I", "O"], label: "Set clip start / end" },
+  { id: "zoom", keys: ["Z"], label: "Add zoom at playhead" },
+  { id: "cut", keys: ["X"], label: "Cut 1 s at playhead" },
+  { id: "speed", keys: ["S"], label: "Speed up 2 s at playhead" },
+  { id: "text", keys: ["T"], label: "Add text at playhead" },
+  { id: "arrow", keys: ["A"], label: "Arrow on / off for text at playhead" },
+  { id: "remove", keys: ["Del"], label: "Remove cut, speed-up, text or zoom at playhead" },
+  { id: "undo", keys: ["Ctrl/⌘ Z"], label: "Undo" },
+  { id: "redo", keys: ["Ctrl/⌘ Shift Z"], label: "Redo" },
+  { id: "help", keys: ["?"], label: "Show shortcuts" },
 ];
 
 /** Map a key press to an editor action, or null when it isn't a shortcut. */

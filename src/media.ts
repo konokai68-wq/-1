@@ -1,4 +1,5 @@
 /** Browser media helpers: screen capture, loading and exporting video. */
+import { t } from "./i18n";
 
 export function pickMimeType(): string {
   const candidates = [
@@ -52,7 +53,7 @@ export async function recordScreen(withAudio: boolean, withCamera = false): Prom
         audio: false,
       });
     } catch {
-      cameraError = "The camera could not be used, so only the screen is being recorded.";
+      cameraError = t("msg.camFailed");
     }
   }
   const screen = startRecorder(stream, 12_000_000);
@@ -89,7 +90,7 @@ export async function loadVideo(video: HTMLVideoElement, blob: Blob): Promise<vo
 function once(el: EventTarget, type: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const ok = () => (cleanup(), resolve());
-    const fail = () => (cleanup(), reject(new Error("This video could not be opened. Try a WebM or MP4 file.")));
+    const fail = () => (cleanup(), reject(new Error(t("msg.badVideo"))));
     const cleanup = () => {
       el.removeEventListener(type, ok);
       el.removeEventListener("error", fail);
