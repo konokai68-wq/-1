@@ -38,5 +38,5 @@ Everything runs locally; no server, no account.
 - [ ] Hosted demo on GitHub Pages (workflow ready; the owner enables Pages)
 - [x] Social preview image (`public/social-preview.png`, `scripts/make-social.mjs`) and Open Graph / Twitter tags built from the repo name
 - [ ] Landing section
-- [ ] Translations (Japanese first) — in progress: `i18n.ts` with an EN / 日本語 switch and `?lang=`; main screen, panels, export info and buttons done; lists, toasts and the shortcut sheet still English
+- [ ] Translations (Japanese first) — in progress: `i18n.ts` with an EN / 日本語 switch and `?lang=`; main screen, panels, export info, buttons, messages (toasts), shortcut sheet and option names done; the rows of the edit lists and the resume summary still English
 - [ ] Launch posts drafted (owner posts them)

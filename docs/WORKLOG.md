@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-09 13:00 JST — Japanese UI, part 2
+- All toasts and load / record errors use `t()` (about 60 messages, `msg.*`). The shortcut sheet, backdrop names, canvas sizes, export format, bubble shapes and corners get keys through `tOr()` + `data-i18n*`, so they switch live.
+- Tests: run-time keys (`sc.*`, `bg.*`, `aspect.*`, `format.*`) exist and match the English text; every translation keeps the `{slot}`s of the English one. 148 passing.
+- Checked in headless Chromium (`ja-JP`): shortcut sheet, select options, swatch titles and a drop-hint toast in Japanese, then English after the switch; no page errors.
+- Next: the rows of the zoom / cut / speed-up / text lists and the resume summary.
+
 ## 2026-11-09 09:00 JST — Japanese UI, part 1
 - `i18n.ts` (pure parts tested): English / Japanese dictionaries with English fallback and `{slot}` filling; language from `?lang=`, then the saved choice (`localStorage`), then the browser language. A quiet *English / 日本語* button in the top bar switches live, without a reload.
 - The fixed markup opts in with `data-i18n`, `data-i18n-html`, `data-i18n-title` and `data-i18n-aria`; the record / export / auto-zoom buttons, play label and export info use `t()`. Lists, toasts and the shortcut sheet are still English (next session).
