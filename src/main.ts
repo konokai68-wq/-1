@@ -1,5 +1,6 @@
 import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
+import { etaTracker, withLeft } from "./eta";
 import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
@@ -861,7 +862,7 @@ autoZoomBtn.addEventListener("click", async () => {
     range: { ...trim },
     cuts,
     existing: zooms,
-    onProgress: (f) => notify(t("msg.autoProgress", { pct: Math.round(f * 100) }), true),
+    onProgress: progressToast((pct) => t("msg.autoProgress", { pct })),
   });
   autoZoomJob = job;
   let found: ZoomSegment[] | null = null;
@@ -1335,7 +1336,7 @@ exportBtn.addEventListener("click", async () => {
       video,
       trim,
       render,
-      (f) => notify(t("msg.realtime", { pct: Math.round(f * 100) }), true),
+      progressToast((pct) => t("msg.realtime", { pct })),
       settings.frameRate,
     );
     result = { blob: await exporting.done, ext: "webm" };
@@ -1367,14 +1368,16 @@ async function exportGifPath(stamp: string) {
     cuts,
     speeds,
     draw: await styledDraw(),
-    onProgress: (f) => notify(t("msg.gifProgress", { pct: Math.round(f * 100) }), true),
+    onProgress: progressToast((pct) => t("msg.gifProgress", { pct })),
   });
   exporting = job;
   let blob: Blob | null = null;
+  let failed = false;
   try {
     blob = await job.done;
   } catch (err) {
     console.error(err);
+    failed = true;
     notify(t("msg.gifFailed"));
   }
   releaseExportCamera();
@@ -1383,7 +1386,7 @@ async function exportGifPath(stamp: string) {
   if (blob) {
     download(blob, `panreel-${stamp}.gif`);
     notify(t("msg.gifDone", { mb: (blob.size / 1048576).toFixed(1) }));
-  } else if (!toast.textContent?.startsWith("GIF export failed")) {
+  } else if (!failed) {
     notify(t("msg.exportCancelled"));
   }
 }
@@ -1427,7 +1430,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     speeds,
     frameRate: settings.frameRate,
     draw: await styledDraw(),
-    onProgress: (f) => notify(t("msg.progress", { ext: plan.container.toUpperCase(), pct: Math.round(f * 100) }), true),
+    onProgress: progressToast((pct) => t("msg.progress", { ext: plan.container.toUpperCase(), pct })),
   });
   exporting = job;
   let blob: Blob | null;
@@ -1583,6 +1586,12 @@ function renderResumeInfo() {
 // ---- Helpers -----------------------------------------------------------------
 
 let toastTimer = 0;
+/** Sticky progress toast that adds "about 20 s left" once there is a fair guess. */
+function progressToast(text: (pct: number) => string): (fraction: number) => void {
+  const eta = etaTracker(performance.now());
+  return (f) => notify(withLeft(text(Math.round(f * 100)), eta(f, performance.now()), lang()), true);
+}
+
 function notify(msg: string, sticky = false) {
   toast.textContent = msg;
   toast.hidden = false;

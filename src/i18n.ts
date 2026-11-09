@@ -235,6 +235,9 @@ const en = {
   "ago.min": "{n} min ago",
   "ago.h": "{n} h ago",
   "ago.days": "{n} days ago",
+  "left.few": "a few seconds left",
+  "left.s": "about {n} s left",
+  "left.min": "about {n} min left",
 };
 
 export type Key = keyof typeof en;
@@ -467,6 +470,9 @@ const ja: Partial<Record<Key, string>> = {
   "ago.min": "{n}分前",
   "ago.h": "{n}時間前",
   "ago.days": "{n}日前",
+  "left.few": "まもなく完了",
+  "left.s": "残り約{n}秒",
+  "left.min": "残り約{n}分",
 };
 
 const DICTS: Record<Lang, Partial<Record<Key, string>>> = { en, ja };
