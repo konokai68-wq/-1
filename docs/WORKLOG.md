@@ -2,6 +2,13 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-10 09:00 JST — time left, launch drafts
+- Export (MP4 / WebM / GIF / real-time) and auto-zoom toasts add "about 20 s left" once 3 % and 1.5 s are done (`eta.ts`, pure and tested: average rate, 5 s steps under a minute, whole minutes above; English and Japanese).
+- Fix: in Japanese a failed GIF export showed "Export cancelled" instead of the error (the check compared the toast with English text); now a flag.
+- Launch posts drafted (Show HN, Reddit, X in English / Japanese) on the team's notes page; the owner posts them after enabling Pages.
+- Checked in headless Chromium (`en-US`, `ja-JP`): sample clip at 4K60 took 61 s / 78 s; the toast said "about 1 min left" / 「残り約1分」 from 3 %; no page errors. Tests: 161 passing.
+- Next: faster export in a worker.
+
 ## 2026-11-09 22:00 JST — start screen: sample clip
 - *Try a sample clip* on the start screen: `sample.ts` (scene timing pure and tested) draws an 8 s made-up notes app with a menu that opens and text being typed; `sampleClip.ts` (lazy) encodes it with Mediabunny `CanvasSource` in about 2 s, only in a codec the browser can also play, else records the canvas in real time. The toast points to *Auto zoom*.
 - Start screen also lists three facts (stays on your device, free and MIT, no install) and a source link; the link follows `GITHUB_REPOSITORY` at build time (`repoUrl`). On phones only the title and the sample button show.
