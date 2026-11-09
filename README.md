@@ -28,6 +28,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser
 - **Webcam bubble**: tick *Record my camera with the screen* to record your face alongside, or add an existing camera clip to any video. Choose a circle or rounded square, size, corner (or drag it on the preview) and mirroring — it's kept separate until export, so you can restyle it any time
 - **Never lose an edit**: the project (videos, camera clip, backdrop image and every edit) is saved in this browser as you work. Reload or come back later and press *Resume last project* — or *Discard* to start clean. It stays on your device
+- **English or Japanese** (日本語): picked from your browser language; switch with the button in the top bar or open the app with `?lang=ja`. The Japanese translation covers the main screen and panels so far
 - **Undo / redo** for zooms, cuts, speed-ups, text, trim and frame settings (<kbd>Ctrl/⌘ Z</kbd>, <kbd>Ctrl/⌘ Shift Z</kbd>)
 
 ## Keyboard shortcuts
@@ -68,7 +69,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: the hosted demo on GitHub Pages, a faster export in a worker, a cursor highlight, and a Japanese translation.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: the hosted demo on GitHub Pages, a faster export in a worker, a cursor highlight, and finishing the Japanese translation (lists, messages and the shortcut sheet).
 
 Shared links to the hosted site show a preview card (`public/social-preview.png`). The Open Graph / Twitter tags are added at build time; in GitHub Actions the image URL is worked out from the repository name, so the card keeps working after a rename.
 

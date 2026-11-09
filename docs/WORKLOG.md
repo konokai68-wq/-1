@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-09 09:00 JST — Japanese UI, part 1
+- `i18n.ts` (pure parts tested): English / Japanese dictionaries with English fallback and `{slot}` filling; language from `?lang=`, then the saved choice (`localStorage`), then the browser language. A quiet *English / 日本語* button in the top bar switches live, without a reload.
+- The fixed markup opts in with `data-i18n`, `data-i18n-html`, `data-i18n-title` and `data-i18n-aria`; the record / export / auto-zoom buttons, play label and export info use `t()`. Lists, toasts and the shortcut sheet are still English (next session).
+- Fix: on phones the timeline sat on top of the inspector because the page was locked to the viewport height; below 760 px the page now scrolls.
+- Checked in headless Chromium with `ja-JP` and `en-US` locales at 1440 and 390 px; switch and reload keep the choice. Tests: 145 passing.
+
 ## 2026-11-08 22:00 JST — auto zoom
 - *Auto zoom* (Zooms panel): samples the trimmed clip at 4 fps as 160 px greyscale frames, measures what changed between neighbours (`autoZoom.ts`, pure and tested) and turns local changes into zooms: aimed at the changed area, 2.4× / 1.8× / 1.4× by its size, from 0.5 s before to 1.6 s after, 2–8 s long. Page changes and scrolls (over 22 % of pixels) are ignored; a popup that opens and closes in the same spot is one zoom; never overlaps existing zooms; one undo step; cancellable.
 - Frame pulling moved from `gifExport.ts` to a shared `frameSource.ts` (WebCodecs, with `<video>` seeking as the fallback).
