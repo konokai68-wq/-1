@@ -82,9 +82,11 @@ export async function loadVideo(video: HTMLVideoElement, blob: Blob): Promise<vo
   if (!Number.isFinite(video.duration)) {
     video.currentTime = Number.MAX_SAFE_INTEGER;
     await once(video, "durationchange");
-    video.currentTime = 0;
-    await once(video, "seeked");
   }
+  // A paused video may not decode its first frame until it is asked for one, and
+  // the preview would stay black; an explicit seek to 0 makes it available.
+  video.currentTime = 0;
+  await once(video, "seeked");
 }
 
 function once(el: EventTarget, type: string): Promise<void> {
