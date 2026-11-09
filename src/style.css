@@ -278,8 +278,11 @@ kbd {
 }
 
 @media (max-width: 760px) {
-  .workspace { grid-template-columns: 1fr; }
-  .inspector { border-left: 0; border-top: 1px solid var(--line); }
+  /* Let the page scroll instead of squeezing the stage under the inspector. */
+  html, body { height: auto; min-height: 100%; }
+  .workspace { grid-template-columns: 1fr; min-height: auto; }
+  .stage { min-height: auto; }
+  .inspector { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .tagline { display: none; }
   .canvas-wrap { padding: 16px; min-height: 200px; }
   .transport { flex-wrap: wrap; padding: 10px 16px; }
