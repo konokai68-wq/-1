@@ -3,6 +3,7 @@ import { KEYS, LANGS, isKey, isLang, missingKeys, pickLang, tOr, translate, type
 import { SHORTCUTS } from "./shortcuts";
 import { ASPECTS, BACKDROPS } from "./render";
 import { FORMATS } from "./exportSettings";
+import { TEXT_LOOKS } from "./texts";
 
 describe("pickLang", () => {
   it("prefers the ?lang= query", () => {
@@ -57,6 +58,7 @@ describe("names built at run time", () => {
       ...BACKDROPS.map((b) => [`bg.${b.id}`, b.name] as [string, string]),
       ...ASPECTS.map((a) => [`aspect.${a.id}`, a.label] as [string, string]),
       ...FORMATS.map((f) => [`format.${f.id}`, f.label] as [string, string]),
+      ...TEXT_LOOKS.map((k) => [`look.${k.id}`, k.label] as [string, string]),
     ];
     for (const [key, english] of pairs) {
       expect(isKey(key), key).toBe(true);

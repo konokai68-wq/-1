@@ -84,6 +84,7 @@ describe("sanitizeProject", () => {
 describe("editSummary", () => {
   it("lists what was added", () => {
     expect(editSummary(good)).toBe("1 zoom · 1 cut · 1 speed-up · 1 text");
+    expect(editSummary(good, "ja")).toBe("ズーム1 · カット1 · 早送り1 · 文字1");
     expect(editSummary({ zooms: [], cuts: [], speeds: [], texts: [] })).toBe("");
     expect(editSummary({ ...good, zooms: [good.zooms[0], good.zooms[0]], cuts: [], speeds: [], texts: [] })).toBe("2 zooms");
   });
@@ -96,5 +97,11 @@ describe("timeAgo", () => {
     expect(timeAgo(now - 5 * 60_000, now)).toBe("5 min ago");
     expect(timeAgo(now - 3 * 3_600_000, now)).toBe("3 h ago");
     expect(timeAgo(now - 3 * 86_400_000, now)).toBe("3 days ago");
+  });
+  it("speaks Japanese", () => {
+    const now = 1_700_000_000_000;
+    expect(timeAgo(now - 10_000, now, "ja")).toBe("たった今");
+    expect(timeAgo(now - 5 * 60_000, now, "ja")).toBe("5分前");
+    expect(timeAgo(now - 3 * 86_400_000, now, "ja")).toBe("3日前");
   });
 });

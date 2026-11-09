@@ -980,7 +980,7 @@ laneDrag(speedLane, "speed");
 laneDrag(textLane, "text");
 
 /** Timeline bars with drag grips, one per span. */
-function laneBars(spans: readonly Span[], kind: LaneKind, active: number, noun: string): HTMLElement[] {
+function laneBars(spans: readonly Span[], kind: LaneKind, active: number): HTMLElement[] {
   const d = video.duration || 1;
   return spans.map((z, i) => {
     const s = document.createElement("span");
@@ -992,7 +992,7 @@ function laneBars(spans: readonly Span[], kind: LaneKind, active: number, noun: 
       g.className = "grip";
       g.dataset.edge = edge;
       g.dataset.index = String(i);
-      g.title = `Drag to change where this ${noun} ${edge === "start" ? "starts" : "ends"}`;
+      g.title = t(`grip.${kind}.${edge}`);
       s.append(g);
     }
     return s;
@@ -1001,7 +1001,7 @@ function laneBars(spans: readonly Span[], kind: LaneKind, active: number, noun: 
 
 function renderZoomUi() {
   const active = zoomIndexAt(zooms, video.currentTime);
-  zoomLane.replaceChildren(...laneBars(zooms, "zoom", active, "zoom"));
+  zoomLane.replaceChildren(...laneBars(zooms, "zoom", active));
   zoomList.replaceChildren(
     ...zooms.map((z, i) => {
       const li = document.createElement("li");
@@ -1009,10 +1009,10 @@ function renderZoomUi() {
       const label = document.createElement("button");
       label.type = "button";
       label.textContent = `${formatTime(z.start)}–${formatTime(z.end)}`;
-      label.title = "Jump to this zoom";
+      label.title = t("row.jumpZoom");
       label.addEventListener("click", () => (video.currentTime = z.start + 0.7));
       const amount = document.createElement("select");
-      amount.setAttribute("aria-label", "Zoom amount");
+      amount.setAttribute("aria-label", t("row.zoomAmount"));
       for (const v of [1.4, 1.8, 2.4, 3]) amount.add(new Option(`${v}×`, String(v), false, v === z.scale));
       amount.addEventListener("change", () => {
         checkpoint();
@@ -1020,7 +1020,7 @@ function renderZoomUi() {
       });
       const del = document.createElement("button");
       del.type = "button";
-      del.textContent = "Remove";
+      del.textContent = t("row.remove");
       del.addEventListener("click", () => removeZoom(i));
       li.append(label, amount, del);
       return li;
@@ -1060,24 +1060,24 @@ function removeCut(i: number) {
 
 function renderCutUi() {
   const active = cutIndexAt(cuts, video.currentTime);
-  cutLane.replaceChildren(...laneBars(cuts, "cut", active, "cut"));
+  cutLane.replaceChildren(...laneBars(cuts, "cut", active));
   cutList.replaceChildren(
     ...cuts.map((c, i) => {
       const li = document.createElement("li");
       const label = document.createElement("button");
       label.type = "button";
       label.textContent = `${formatTimeFine(c.start)}–${formatTimeFine(c.end)}`;
-      label.title = "Show where this cut starts";
+      label.title = t("row.showCut");
       label.addEventListener("click", () => {
         video.pause();
         video.currentTime = c.start;
       });
       const len = document.createElement("span");
       len.className = "cut-len";
-      len.textContent = `−${(c.end - c.start).toFixed(1)} s`;
+      len.textContent = t("row.cutLen", { s: (c.end - c.start).toFixed(1) });
       const del = document.createElement("button");
       del.type = "button";
-      del.textContent = "Remove";
+      del.textContent = t("row.remove");
       del.addEventListener("click", () => removeCut(i));
       li.append(label, len, del);
       return li;
@@ -1091,10 +1091,10 @@ function renderCutResult() {
   const kept = keptDuration(trim, cuts);
   const result = keptDuration(trim, cuts, speeds);
   const parts: string[] = [];
-  if (cuts.length) parts.push(`${formatTimeFine(trim.end - trim.start - kept)} cut`);
-  if (speeds.length) parts.push(`${formatTimeFine(kept - result)} saved by speed-ups`);
+  if (cuts.length) parts.push(t("result.cut", { len: formatTimeFine(trim.end - trim.start - kept) }));
+  if (speeds.length) parts.push(t("result.saved", { len: formatTimeFine(kept - result) }));
   cutResult.hidden = parts.length === 0;
-  cutResult.textContent = `Result: ${formatTimeFine(result)} (${parts.join(", ")}).`;
+  cutResult.textContent = t("result.line", { len: formatTimeFine(result), parts: parts.join(t("result.sep")) });
 }
 
 // ---- Speed-ups ---------------------------------------------------------------
@@ -1119,7 +1119,7 @@ function removeSpeed(i: number) {
 
 function renderSpeedUi() {
   const active = cutIndexAt(speeds, video.currentTime);
-  const bars = laneBars(speeds, "speed", active, "speed-up");
+  const bars = laneBars(speeds, "speed", active);
   bars.forEach((b, i) => (b.dataset.rate = `${speeds[i].rate}×`));
   speedLane.replaceChildren(...bars);
   speedList.replaceChildren(
@@ -1129,13 +1129,13 @@ function renderSpeedUi() {
       const label = document.createElement("button");
       label.type = "button";
       label.textContent = `${formatTimeFine(s.start)}–${formatTimeFine(s.end)}`;
-      label.title = "Show where this speed-up starts";
+      label.title = t("row.showSpeed");
       label.addEventListener("click", () => {
         video.pause();
         video.currentTime = s.start;
       });
       const rate = document.createElement("select");
-      rate.setAttribute("aria-label", "Speed");
+      rate.setAttribute("aria-label", t("row.speed"));
       for (const v of SPEED_RATES) rate.add(new Option(`${v}×`, String(v), false, v === s.rate));
       rate.addEventListener("change", () => {
         checkpoint();
@@ -1144,7 +1144,7 @@ function renderSpeedUi() {
       });
       const del = document.createElement("button");
       del.type = "button";
-      del.textContent = "Remove";
+      del.textContent = t("row.remove");
       del.addEventListener("click", () => removeSpeed(i));
       li.append(label, rate, del);
       return li;
@@ -1202,7 +1202,7 @@ function removeText(i: number) {
 
 function renderTextLane() {
   const active = textIndexAt(texts, video.currentTime);
-  textLane.replaceChildren(...laneBars(texts, "text", active, "text"));
+  textLane.replaceChildren(...laneBars(texts, "text", active));
 }
 
 /** Highlight the callout at the playhead without rebuilding the list (keeps typing focus). */
@@ -1221,7 +1221,7 @@ function renderTextUi() {
       time.type = "button";
       time.className = "text-time";
       time.textContent = `${formatTimeFine(n.start)}–${formatTimeFine(n.end)}`;
-      time.title = "Show this text";
+      time.title = t("row.showText");
       time.addEventListener("click", () => {
         video.pause();
         video.currentTime = Math.min(n.end - 0.05, n.start + 0.5);
@@ -1231,7 +1231,7 @@ function renderTextUi() {
       input.value = n.text;
       input.maxLength = 140;
       input.dataset.index = String(i);
-      input.setAttribute("aria-label", "Text");
+      input.setAttribute("aria-label", t("row.text"));
       input.addEventListener("focus", () => {
         if (textIndexAt(texts, video.currentTime) !== i) {
           video.pause();
@@ -1243,14 +1243,14 @@ function renderTextUi() {
         texts[i] = { ...texts[i], text: input.value };
       });
       const look = document.createElement("select");
-      look.setAttribute("aria-label", "Text style");
-      for (const k of TEXT_LOOKS) look.add(new Option(k.label, k.id, false, k.id === n.look));
+      look.setAttribute("aria-label", t("row.textStyle"));
+      for (const k of TEXT_LOOKS) look.add(new Option(tOr(`look.${k.id}`, k.label), k.id, false, k.id === n.look));
       look.addEventListener("change", () => {
         checkpoint();
         texts[i] = { ...texts[i], look: look.value as TextLook };
       });
       const size = document.createElement("select");
-      size.setAttribute("aria-label", "Text size");
+      size.setAttribute("aria-label", t("row.textSize"));
       for (const z of TEXT_SIZES) size.add(new Option(z.label, String(z.value), false, z.value === n.size));
       size.addEventListener("change", () => {
         checkpoint();
@@ -1259,8 +1259,8 @@ function renderTextUi() {
       const arrow = document.createElement("button");
       arrow.type = "button";
       arrow.className = "arrow-toggle";
-      arrow.textContent = "Arrow";
-      arrow.title = "Point at something with an arrow (A). Drag its tip on the preview.";
+      arrow.textContent = t("row.arrow");
+      arrow.title = t("row.arrowTip");
       arrow.setAttribute("aria-pressed", String(Boolean(n.arrow)));
       arrow.addEventListener("click", () => {
         checkpoint();
@@ -1273,7 +1273,7 @@ function renderTextUi() {
       });
       const del = document.createElement("button");
       del.type = "button";
-      del.textContent = "Remove";
+      del.textContent = t("row.remove");
       del.addEventListener("click", () => removeText(i));
       const row = document.createElement("div");
       row.className = "text-row";
@@ -1552,10 +1552,18 @@ void loadProject().then((saved) => {
   const p = sanitizeProject(saved.data, PROJECT_DEFAULTS);
   if (!p) return;
   pending = saved;
-  const edits = editSummary(p);
-  resumeInfo.textContent = `${p.name} · ${formatTime(p.duration)}${edits ? ` · ${edits}` : ""} · saved ${timeAgo(saved.savedAt, Date.now())}`;
+  renderResumeInfo();
   resumeBox.hidden = false;
 });
+
+function renderResumeInfo() {
+  if (!pending) return;
+  const p = sanitizeProject(pending.data, PROJECT_DEFAULTS);
+  if (!p) return;
+  const edits = editSummary(p, lang());
+  const ago = t("resume.saved", { ago: timeAgo(pending.savedAt, Date.now(), lang()) });
+  resumeInfo.textContent = `${p.name} · ${formatTime(p.duration)}${edits ? ` · ${edits}` : ""} · ${ago}`;
+}
 
 // ---- Helpers -----------------------------------------------------------------
 
@@ -1585,5 +1593,12 @@ onLangChange((l) => {
   if (exporting) exportBtn.textContent = t("export.cancel");
   updateExportInfo();
   syncTransport();
+  renderResumeInfo();
+  if (hasVideo) {
+    renderZoomUi();
+    renderCutUi();
+    renderSpeedUi();
+    renderTextUi();
+  }
 });
 langBtn.addEventListener("click", () => setLang(lang() === "ja" ? "en" : "ja"));

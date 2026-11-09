@@ -3,6 +3,7 @@ import { SPEED_RATES, type Span, type SpeedSpan } from "./cuts";
 import type { ZoomSegment } from "./layout";
 import type { TextLook, TextNote } from "./texts";
 import type { Trim } from "./trim";
+import { translate, type Key, type Lang } from "./i18n";
 
 /**
  * Everything needed to reopen an edit, as plain JSON. The videos and the
@@ -126,26 +127,26 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
 }
 
 /** "3 zooms · 1 cut · 2 texts", or "" when nothing has been added yet. */
-export function editSummary(p: Pick<ProjectData, "zooms" | "cuts" | "speeds" | "texts">): string {
-  const parts: [number, string][] = [
-    [p.zooms.length, "zoom"],
-    [p.cuts.length, "cut"],
-    [p.speeds.length, "speed-up"],
-    [p.texts.length, "text"],
+export function editSummary(p: Pick<ProjectData, "zooms" | "cuts" | "speeds" | "texts">, lang: Lang = "en"): string {
+  const parts: [number, Key, Key][] = [
+    [p.zooms.length, "sum.zoom", "sum.zooms"],
+    [p.cuts.length, "sum.cut", "sum.cuts"],
+    [p.speeds.length, "sum.speed", "sum.speeds"],
+    [p.texts.length, "sum.text", "sum.texts"],
   ];
   return parts
     .filter(([n]) => n > 0)
-    .map(([n, word]) => `${n} ${word}${n === 1 ? "" : "s"}`)
+    .map(([n, one, many]) => translate(lang, n === 1 ? one : many, { n }))
     .join(" · ");
 }
 
 /** "just now", "5 min ago", "3 h ago", "2 days ago". */
-export function timeAgo(savedAt: number, now: number): string {
+export function timeAgo(savedAt: number, now: number, lang: Lang = "en"): string {
   const s = Math.max(0, (now - savedAt) / 1000);
-  if (s < 60) return "just now";
+  if (s < 60) return translate(lang, "ago.now");
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min ago`;
+  if (m < 60) return translate(lang, "ago.min", { n: m });
   const h = Math.floor(m / 60);
-  if (h < 48) return `${h} h ago`;
-  return `${Math.floor(h / 24)} days ago`;
+  if (h < 48) return translate(lang, "ago.h", { n: h });
+  return translate(lang, "ago.days", { n: Math.floor(h / 24) });
 }
