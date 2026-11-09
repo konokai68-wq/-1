@@ -2,6 +2,13 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-09 22:00 JST — start screen: sample clip
+- *Try a sample clip* on the start screen: `sample.ts` (scene timing pure and tested) draws an 8 s made-up notes app with a menu that opens and text being typed; `sampleClip.ts` (lazy) encodes it with Mediabunny `CanvasSource` in about 2 s, only in a codec the browser can also play, else records the canvas in real time. The toast points to *Auto zoom*.
+- Start screen also lists three facts (stays on your device, free and MIT, no install) and a source link; the link follows `GITHUB_REPOSITORY` at build time (`repoUrl`). On phones only the title and the sample button show.
+- Fix: MP4s and other files with a known length showed a black preview until the first seek; `loadVideo` now always seeks to 0.
+- Checked in headless Chromium (`en-US` 1440 px, `ja-JP` 390 px): sample loads (8.0 s), Auto zoom adds 1.8× on the menu (0–5 s) and 2.4× on the typing (5–8 s); no page errors. Tests: 156 passing.
+- Next: faster export in a worker, or cursor highlight.
+
 ## 2026-11-09 18:00 JST — Japanese UI, part 3 (done)
 - The rows of the zoom / cut / speed-up / text lists (Remove, tooltips, aria labels, text looks, "−1.0 s"), the timeline grip tooltips and the cut / speed-up result line use `t()` and rebuild when the language changes.
 - `editSummary` and `timeAgo` (resume box) take a language; the resume line switches live too.

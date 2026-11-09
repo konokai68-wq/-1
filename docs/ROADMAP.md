@@ -37,6 +37,6 @@ Everything runs locally; no server, no account.
 - [x] Demo GIF and fresh screenshot in README, made with Panreel itself (`scripts/make-demo.mjs`)
 - [ ] Hosted demo on GitHub Pages (workflow ready; the owner enables Pages)
 - [x] Social preview image (`public/social-preview.png`, `scripts/make-social.mjs`) and Open Graph / Twitter tags built from the repo name
-- [ ] Landing section
+- [x] Landing section: *Try a sample clip* (a made-up screencast drawn and encoded in the browser, `sample.ts` / `sampleClip.ts`), short facts and a source link on the start screen
 - [x] Translations (Japanese first): `i18n.ts` with an EN / 日本語 switch and `?lang=`; every screen, message, list row, the shortcut sheet and the resume summary
 - [ ] Launch posts drafted (owner posts them)

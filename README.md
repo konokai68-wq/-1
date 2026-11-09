@@ -12,6 +12,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 
 ## What it does today
 
+- **Try it in one click**: no recording at hand? Press *Try a sample clip* on the start screen — Panreel draws a short made-up app screencast right in your browser, then press *Auto zoom* to see what it does
 - **Record** your screen, a window or a tab straight from the browser — or open / drag-and-drop a WebM or MP4 file
 - **Style** the frame: six gradient backdrops, any solid colour, or your own image (with optional blur), plus padding, corner radius and shadow
 - **Canvas sizes** for every platform: 16:9, 1:1, 9:16 and 4:3
@@ -57,7 +58,7 @@ npm install
 npm run dev
 ```
 
-Then open the printed URL in Chrome, Edge or Firefox on a desktop computer.
+Then open the printed URL in Chrome, Edge or Firefox on a desktop computer, and press *Try a sample clip* for a quick tour.
 
 | Command | What it does |
 | --- | --- |
