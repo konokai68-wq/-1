@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pagesUrl, socialMetaTags } from "./siteMeta";
+import { pagesUrl, repoUrl, socialMetaTags } from "./siteMeta";
 
 describe("pagesUrl", () => {
   it("builds the project Pages URL", () => {
@@ -36,5 +36,15 @@ describe("socialMetaTags", () => {
 
   it("escapes attribute values", () => {
     expect(socialMetaTags(null)).not.toMatch(/content="[^"]*</);
+  });
+});
+
+describe("repoUrl", () => {
+  it("links the repository the site is built from", () => {
+    expect(repoUrl("someone/panreel")).toBe("https://github.com/someone/panreel");
+  });
+  it("falls back to the current repository when unknown or malformed", () => {
+    expect(repoUrl(undefined)).toBe("https://github.com/konokai68-wq/-1");
+    expect(repoUrl("not a repo")).toBe("https://github.com/konokai68-wq/-1");
   });
 });

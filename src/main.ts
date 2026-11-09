@@ -450,6 +450,21 @@ async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): 
   }
 }
 
+const sampleBtn = $<HTMLButtonElement>("sampleBtn");
+sampleBtn.addEventListener("click", async () => {
+  sampleBtn.disabled = true;
+  notify(t("sample.making"), true);
+  try {
+    const { makeSampleClip } = await import("./sampleClip");
+    const clip = await makeSampleClip();
+    if (await open(clip, null, "Sample clip")) notify(t("msg.sample"));
+  } catch (err) {
+    notify(t("msg.sampleFail", { err: (err as Error).message }));
+  } finally {
+    sampleBtn.disabled = false;
+  }
+});
+
 fileInput.addEventListener("change", () => {
   const f = fileInput.files?.[0];
   if (f) void open(f, null, f.name);

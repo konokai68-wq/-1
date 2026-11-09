@@ -22,6 +22,15 @@ export function pagesUrl(repository: string | undefined): string | null {
   return `https://${owner}.github.io/${repo}/`;
 }
 
+/** Where the source lives today; GitHub redirects old names after a rename. */
+export const DEFAULT_REPOSITORY = "konokai68-wq/-1";
+
+/** github.com URL for "owner/repo"; falls back to DEFAULT_REPOSITORY when unknown. */
+export function repoUrl(repository: string | undefined): string {
+  const r = repository?.trim() ?? "";
+  return `https://github.com/${/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(r) ? r : DEFAULT_REPOSITORY}`;
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
