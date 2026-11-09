@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-09 18:00 JST — Japanese UI, part 3 (done)
+- The rows of the zoom / cut / speed-up / text lists (Remove, tooltips, aria labels, text looks, "−1.0 s"), the timeline grip tooltips and the cut / speed-up result line use `t()` and rebuild when the language changes.
+- `editSummary` and `timeAgo` (resume box) take a language; the resume line switches live too.
+- Checked in headless Chromium (`ja-JP`): zoom, cut, speed-up and text rows plus the result line in Japanese, English after the switch; after a reload the resume line switches both ways; no page errors. Tests: 149 passing.
+- Next: faster export in a worker, cursor highlight, or a landing section.
+
 ## 2026-11-09 13:00 JST — Japanese UI, part 2
 - All toasts and load / record errors use `t()` (about 60 messages, `msg.*`). The shortcut sheet, backdrop names, canvas sizes, export format, bubble shapes and corners get keys through `tOr()` + `data-i18n*`, so they switch live.
 - Tests: run-time keys (`sc.*`, `bg.*`, `aspect.*`, `format.*`) exist and match the English text; every translation keeps the `{slot}`s of the English one. 148 passing.
