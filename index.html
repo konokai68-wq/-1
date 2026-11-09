@@ -14,31 +14,32 @@
       <div class="brand">
         <span class="mark" aria-hidden="true"></span>
         <span class="wordmark">Panreel</span>
-        <span class="tagline">Polish screen recordings. Nothing leaves your browser.</span>
+        <span class="tagline" data-i18n="tagline">Polish screen recordings. Nothing leaves your browser.</span>
       </div>
       <div class="actions">
-        <button id="record" class="btn btn-record" type="button"><span class="dot" aria-hidden="true"></span><span class="label">Record screen</span></button>
-        <label class="btn">Open video<input id="file" type="file" accept="video/*" hidden /></label>
+        <button id="lang" class="btn btn-lang" type="button" data-i18n-aria="lang.switch" aria-label="Language">日本語</button>
+        <button id="record" class="btn btn-record" type="button"><span class="dot" aria-hidden="true"></span><span class="label" data-i18n="rec.start">Record screen</span></button>
+        <label class="btn"><span data-i18n="open.video">Open video</span><input id="file" type="file" accept="video/*" hidden /></label>
         <button id="export" class="btn btn-primary" type="button" disabled>Export</button>
       </div>
     </header>
 
     <main class="workspace">
-      <section class="stage" id="stage" aria-label="Preview">
+      <section class="stage" id="stage" aria-label="Preview" data-i18n-aria="preview">
         <div class="canvas-wrap" id="canvasWrap">
-          <canvas id="canvas" width="1920" height="1080" aria-label="Video preview"></canvas>
+          <canvas id="canvas" width="1920" height="1080" aria-label="Video preview" data-i18n-aria="preview.canvas"></canvas>
           <div class="empty" id="empty">
-            <p class="empty-title">Drop a screen recording here</p>
-            <p class="empty-sub">or record your screen, a window or a tab. WebM and MP4 work.</p>
+            <p class="empty-title" data-i18n="empty.title">Drop a screen recording here</p>
+            <p class="empty-sub" data-i18n="empty.sub">or record your screen, a window or a tab. WebM and MP4 work.</p>
             <div class="resume" id="resume" hidden>
               <p class="resume-info" id="resumeInfo"></p>
               <div class="resume-actions">
-                <button id="resumeBtn" class="btn btn-primary" type="button">Resume last project</button>
-                <button id="discardBtn" class="btn btn-small btn-ghost" type="button">Discard</button>
+                <button id="resumeBtn" class="btn btn-primary" type="button" data-i18n="resume.btn">Resume last project</button>
+                <button id="discardBtn" class="btn btn-small btn-ghost" type="button" data-i18n="discard">Discard</button>
               </div>
             </div>
           </div>
-          <div class="focus-hint" id="focusHint" hidden>Click the preview to aim the zoom</div>
+          <div class="focus-hint" id="focusHint" hidden data-i18n="focus.hint">Click the preview to aim the zoom</div>
         </div>
         <div class="transport">
           <button id="play" class="icon-btn" type="button" aria-label="Play" disabled>
@@ -46,117 +47,117 @@
           </button>
           <span class="time" id="time">0:00 / 0:00</span>
           <div class="track" id="track">
-            <div class="zooms lane" id="zoomLane" aria-label="Zooms on the timeline. Drag a zoom's edges to change its length."></div>
-            <div class="cuts lane" id="cutLane" aria-label="Cuts on the timeline. Drag a cut's edges to change what it removes."></div>
-            <div class="speeds lane" id="speedLane" aria-label="Speed-ups on the timeline. Drag a speed-up's edges to change what it covers."></div>
-            <div class="texts lane" id="textLane" aria-label="Text on the timeline. Drag a text bar's edges to change when it shows."></div>
+            <div class="zooms lane" id="zoomLane" data-i18n-aria="lane.zooms" aria-label="Zooms on the timeline. Drag a zoom's edges to change its length."></div>
+            <div class="cuts lane" id="cutLane" data-i18n-aria="lane.cuts" aria-label="Cuts on the timeline. Drag a cut's edges to change what it removes."></div>
+            <div class="speeds lane" id="speedLane" data-i18n-aria="lane.speeds" aria-label="Speed-ups on the timeline. Drag a speed-up's edges to change what it covers."></div>
+            <div class="texts lane" id="textLane" data-i18n-aria="lane.texts" aria-label="Text on the timeline. Drag a text bar's edges to change when it shows."></div>
             <div class="trim-shade" aria-hidden="true"><span id="cutBefore"></span><span id="cutAfter"></span></div>
-            <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Playhead" disabled />
+            <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Playhead" data-i18n-aria="playhead" disabled />
           </div>
-          <button id="addZoom" class="btn btn-small" type="button" disabled>Add zoom here</button>
-          <button id="addCut" class="btn btn-small" type="button" title="Cut 1 s at the playhead (X)" disabled>Cut here</button>
-          <button id="addSpeed" class="btn btn-small" type="button" title="Speed up 2 s at the playhead (S)" disabled>Speed up</button>
-          <button id="addText" class="btn btn-small" type="button" title="Add text at the playhead (T)" disabled>Add text</button>
-          <div class="history" role="group" aria-label="History">
-            <button id="undo" class="icon-btn" type="button" aria-label="Undo" title="Undo (Ctrl/⌘ Z)" disabled>
+          <button id="addZoom" class="btn btn-small" type="button" data-i18n="add.zoom" disabled>Add zoom here</button>
+          <button id="addCut" class="btn btn-small" type="button" title="Cut 1 s at the playhead (X)" data-i18n="add.cut" data-i18n-title="add.cut.title" disabled>Cut here</button>
+          <button id="addSpeed" class="btn btn-small" type="button" title="Speed up 2 s at the playhead (S)" data-i18n="add.speed" data-i18n-title="add.speed.title" disabled>Speed up</button>
+          <button id="addText" class="btn btn-small" type="button" title="Add text at the playhead (T)" data-i18n="add.text" data-i18n-title="add.text.title" disabled>Add text</button>
+          <div class="history" role="group" aria-label="History" data-i18n-aria="history">
+            <button id="undo" class="icon-btn" type="button" aria-label="Undo" title="Undo (Ctrl/⌘ Z)" data-i18n-aria="undo" data-i18n-title="undo.title" disabled>
               <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M7.5 5 3.5 9l4 4M4 9h8a4.5 4.5 0 0 1 0 9h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <button id="redo" class="icon-btn" type="button" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)" disabled>
+            <button id="redo" class="icon-btn" type="button" aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)" data-i18n-aria="redo" data-i18n-title="redo.title" disabled>
               <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M12.5 5l4 4-4 4M16 9H8a4.5 4.5 0 0 0 0 9h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
         </div>
       </section>
 
-      <aside class="inspector" aria-label="Style">
+      <aside class="inspector" aria-label="Style" data-i18n-aria="style">
         <fieldset>
-          <legend>Backdrop</legend>
+          <legend data-i18n="backdrop">Backdrop</legend>
           <div class="swatches" id="swatches"></div>
           <div class="backdrop-custom">
-            <label class="custom-pick" id="solidPick" title="Solid colour">
-              <input id="solidColor" type="color" value="#0f1115" aria-label="Solid backdrop colour" />
-              <span>Colour</span>
+            <label class="custom-pick" id="solidPick" title="Solid colour" data-i18n-title="solid.title">
+              <input id="solidColor" type="color" value="#0f1115" aria-label="Solid backdrop colour" data-i18n-aria="solid.aria" />
+              <span data-i18n="colour">Colour</span>
             </label>
-            <label class="custom-pick" id="imagePick" title="Use your own image">
+            <label class="custom-pick" id="imagePick" title="Use your own image" data-i18n-title="image.title">
               <span class="custom-thumb" id="imageThumb" aria-hidden="true"></span>
-              <span>Image…</span>
+              <span data-i18n="image">Image…</span>
               <input id="bgFile" type="file" accept="image/*" hidden />
             </label>
           </div>
-          <label class="slider" id="blurRow" hidden>Blur <input id="bgBlur" type="range" min="0" max="0.04" step="0.001" value="0" /></label>
+          <label class="slider" id="blurRow" hidden><span data-i18n="blur">Blur</span> <input id="bgBlur" type="range" min="0" max="0.04" step="0.001" value="0" /></label>
         </fieldset>
         <fieldset>
-          <legend>Canvas</legend>
-          <select id="aspect" aria-label="Canvas size"></select>
+          <legend data-i18n="canvas">Canvas</legend>
+          <select id="aspect" aria-label="Canvas size" data-i18n-aria="canvas.size"></select>
         </fieldset>
         <fieldset>
-          <legend>Export</legend>
-          <div class="seg seg-2" id="format" role="radiogroup" aria-label="Export format"></div>
-          <div class="seg" id="resolution" role="radiogroup" aria-label="Export resolution"></div>
-          <div class="seg seg-2" id="frameRate" role="radiogroup" aria-label="Export frame rate"></div>
+          <legend data-i18n="export">Export</legend>
+          <div class="seg seg-2" id="format" role="radiogroup" aria-label="Export format" data-i18n-aria="export.format"></div>
+          <div class="seg" id="resolution" role="radiogroup" aria-label="Export resolution" data-i18n-aria="export.resolution"></div>
+          <div class="seg seg-2" id="frameRate" role="radiogroup" aria-label="Export frame rate" data-i18n-aria="export.frameRate"></div>
           <p class="note" id="exportInfo"></p>
         </fieldset>
         <fieldset>
-          <legend>Frame</legend>
-          <label class="slider">Padding <input id="padding" type="range" min="0" max="0.3" step="0.005" value="0.08" /></label>
-          <label class="slider">Corners <input id="radius" type="range" min="0" max="0.08" step="0.002" value="0.025" /></label>
-          <label class="slider">Shadow <input id="shadow" type="range" min="0" max="1" step="0.01" value="0.6" /></label>
+          <legend data-i18n="frame">Frame</legend>
+          <label class="slider"><span data-i18n="padding">Padding</span> <input id="padding" type="range" min="0" max="0.3" step="0.005" value="0.08" /></label>
+          <label class="slider"><span data-i18n="corners">Corners</span> <input id="radius" type="range" min="0" max="0.08" step="0.002" value="0.025" /></label>
+          <label class="slider"><span data-i18n="shadow">Shadow</span> <input id="shadow" type="range" min="0" max="1" step="0.01" value="0.6" /></label>
         </fieldset>
         <fieldset>
-          <legend>Camera</legend>
-          <label class="check"><input id="camRecord" type="checkbox" /> Record my camera with the screen</label>
+          <legend data-i18n="camera">Camera</legend>
+          <label class="check"><input id="camRecord" type="checkbox" /> <span data-i18n="cam.record">Record my camera with the screen</span></label>
           <div class="cam-controls" id="camControls" hidden>
-            <label class="check"><input id="camShow" type="checkbox" checked /> Show camera bubble</label>
-            <div class="seg seg-2" id="camShape" role="radiogroup" aria-label="Bubble shape"></div>
-            <label class="slider">Size <input id="camSize" type="range" min="0.12" max="0.45" step="0.01" value="0.24" /></label>
+            <label class="check"><input id="camShow" type="checkbox" checked /> <span data-i18n="cam.show">Show camera bubble</span></label>
+            <div class="seg seg-2" id="camShape" role="radiogroup" aria-label="Bubble shape" data-i18n-aria="cam.shape"></div>
+            <label class="slider"><span data-i18n="size">Size</span> <input id="camSize" type="range" min="0.12" max="0.45" step="0.01" value="0.24" /></label>
             <div class="cam-row">
-              <div class="corners" id="camCorner" role="radiogroup" aria-label="Bubble position"></div>
-              <label class="check"><input id="camMirror" type="checkbox" checked /> Mirror</label>
+              <div class="corners" id="camCorner" role="radiogroup" aria-label="Bubble position" data-i18n-aria="cam.position"></div>
+              <label class="check"><input id="camMirror" type="checkbox" checked /> <span data-i18n="mirror">Mirror</span></label>
             </div>
-            <p class="note">Drag the bubble on the preview to move it to another corner. <button id="camRemove" class="link-btn" type="button">Remove camera</button></p>
+            <p class="note"><span data-i18n="cam.drag">Drag the bubble on the preview to move it to another corner.</span> <button id="camRemove" class="link-btn" type="button" data-i18n="cam.remove">Remove camera</button></p>
           </div>
-          <p class="note" id="camAddNote">Already have a camera clip? <label class="link-btn">Add it to this video…<input id="camFile" type="file" accept="video/*" hidden /></label></p>
+          <p class="note" id="camAddNote"><span data-i18n="cam.have">Already have a camera clip?</span> <label class="link-btn"><span data-i18n="cam.add">Add it to this video…</span><input id="camFile" type="file" accept="video/*" hidden /></label></p>
         </fieldset>
         <fieldset>
-          <legend>Trim</legend>
-          <div class="trim-row"><span>Start <b id="trimStart">0:00.0</b></span><button id="setIn" class="btn btn-small" type="button" disabled>Set to playhead</button></div>
-          <div class="trim-row"><span>End <b id="trimEnd">0:00.0</b></span><button id="setOut" class="btn btn-small" type="button" disabled>Set to playhead</button></div>
-          <p class="note">Press <kbd>I</kbd> or <kbd>O</kbd> to set the start or end. <button id="resetTrim" class="link-btn" type="button" hidden>Keep the whole clip</button></p>
+          <legend data-i18n="trim">Trim</legend>
+          <div class="trim-row"><span><span data-i18n="trim.start">Start</span> <b id="trimStart">0:00.0</b></span><button id="setIn" class="btn btn-small" type="button" data-i18n="trim.set" disabled>Set to playhead</button></div>
+          <div class="trim-row"><span><span data-i18n="trim.end">End</span> <b id="trimEnd">0:00.0</b></span><button id="setOut" class="btn btn-small" type="button" data-i18n="trim.set" disabled>Set to playhead</button></div>
+          <p class="note"><span data-i18n-html="trim.note">Press <kbd>I</kbd> or <kbd>O</kbd> to set the start or end.</span> <button id="resetTrim" class="link-btn" type="button" hidden data-i18n="trim.reset">Keep the whole clip</button></p>
         </fieldset>
         <fieldset>
-          <legend>Cuts</legend>
+          <legend data-i18n="cuts">Cuts</legend>
           <ul class="zoom-list cut-list" id="cutList"></ul>
-          <p class="note" id="cutEmpty">Press <kbd>X</kbd> or Cut here to drop a second at the playhead, then drag the red bar's ends. Playback and exports skip cut parts.</p>
+          <p class="note" id="cutEmpty" data-i18n-html="cuts.empty">Press <kbd>X</kbd> or Cut here to drop a second at the playhead, then drag the red bar's ends. Playback and exports skip cut parts.</p>
           <p class="note" id="cutResult" hidden></p>
         </fieldset>
         <fieldset>
-          <legend>Speed-ups</legend>
+          <legend data-i18n="speeds">Speed-ups</legend>
           <ul class="zoom-list speed-list" id="speedList"></ul>
-          <p class="note" id="speedEmpty">Press <kbd>S</kbd> or Speed up to fast-forward 2 s at the playhead (2×, 4× or 8×), then drag the teal bar's ends. Sped-up parts are muted.</p>
+          <p class="note" id="speedEmpty" data-i18n-html="speeds.empty">Press <kbd>S</kbd> or Speed up to fast-forward 2 s at the playhead (2×, 4× or 8×), then drag the teal bar's ends. Sped-up parts are muted.</p>
         </fieldset>
         <fieldset>
-          <legend>Text</legend>
+          <legend data-i18n="text">Text</legend>
           <ul class="zoom-list text-list" id="textList"></ul>
-          <p class="note" id="textEmpty">Press <kbd>T</kbd> or Add text to put a caption on screen for 3 s. Drag it on the preview to move it, press <kbd>A</kbd> or Arrow to point at something, and drag the violet bar's ends to change when it shows.</p>
+          <p class="note" id="textEmpty" data-i18n-html="text.empty">Press <kbd>T</kbd> or Add text to put a caption on screen for 3 s. Drag it on the preview to move it, press <kbd>A</kbd> or Arrow to point at something, and drag the violet bar's ends to change when it shows.</p>
         </fieldset>
         <fieldset>
-          <legend>Zooms</legend>
+          <legend data-i18n="zooms">Zooms</legend>
           <ul class="zoom-list" id="zoomList"></ul>
-          <p class="note" id="zoomEmpty">Move the playhead to a moment worth a closer look, then press Add zoom here.</p>
-          <p class="note" id="zoomTip" hidden>Drag the ends of an orange bar on the timeline to make a zoom longer or shorter.</p>
+          <p class="note" id="zoomEmpty" data-i18n="zooms.empty">Move the playhead to a moment worth a closer look, then press Add zoom here.</p>
+          <p class="note" id="zoomTip" hidden data-i18n="zooms.tip">Drag the ends of an orange bar on the timeline to make a zoom longer or shorter.</p>
           <div class="auto-zoom">
             <button id="autoZoom" class="btn btn-small" type="button" disabled>Auto zoom</button>
-            <span class="note">Finds moments where only part of the screen changes and zooms in on them.</span>
+            <span class="note" data-i18n="auto.note">Finds moments where only part of the screen changes and zooms in on them.</span>
           </div>
         </fieldset>
-        <button id="showShortcuts" class="link-btn shortcuts-link" type="button">Keyboard shortcuts <kbd>?</kbd></button>
-        <p class="privacy">Your video is processed on this device. Panreel has no server and no account.</p>
+        <button id="showShortcuts" class="link-btn shortcuts-link" type="button"><span data-i18n="shortcuts">Keyboard shortcuts</span> <kbd>?</kbd></button>
+        <p class="privacy" data-i18n="privacy">Your video is processed on this device. Panreel has no server and no account.</p>
       </aside>
     </main>
 
     <dialog class="shortcuts" id="shortcuts" aria-labelledby="shortcutsTitle">
       <form method="dialog" class="shortcuts-panel">
-        <header><h2 id="shortcutsTitle">Keyboard shortcuts</h2><button class="icon-btn" aria-label="Close">✕</button></header>
+        <header><h2 id="shortcutsTitle" data-i18n="shortcuts">Keyboard shortcuts</h2><button class="icon-btn" aria-label="Close" data-i18n-aria="close">✕</button></header>
         <dl id="shortcutList"></dl>
       </form>
     </dialog>

@@ -1,4 +1,5 @@
 import "./style.css";
+import { LANG_NAMES, initLang, lang, onLangChange, setLang, t } from "./i18n";
 import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
@@ -38,6 +39,8 @@ import {
   type SpeedSpan,
 } from "./cuts";
 import { addZoom, formatTime, formatTimeFine, resizeZoom, zoomIndexAt } from "./zooms";
+
+initLang();
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -308,15 +311,15 @@ function updateExportInfo() {
   const gif = settings.format === "gif";
   resolutionGroup.hidden = gif;
   frameRateGroup.hidden = gif;
-  if (!exporting) exportBtn.textContent = gif ? "Export GIF" : "Export video";
+  if (!exporting) exportBtn.textContent = t(gif ? "export.gif" : "export.video");
   if (gif) {
     const g = gifSize({ width: canvas.width, height: canvas.height });
-    exportInfo.textContent = `${g.width} × ${g.height} at ${GIF_FPS} fps, loops forever. For clips up to ${GIF_MAX_SECONDS} s.`;
+    exportInfo.textContent = t("export.gifInfo", { w: g.width, h: g.height, fps: GIF_FPS, max: GIF_MAX_SECONDS });
     return;
   }
   const s = outputSize();
-  const hint = settings.frameRate === 30 ? " Exports about twice as fast." : "";
-  exportInfo.textContent = `${s.width} × ${s.height} at ${settings.frameRate} fps.${hint}`;
+  const hint = settings.frameRate === 30 ? ` ${t("export.faster")}` : "";
+  exportInfo.textContent = t("export.info", { w: s.width, h: s.height, fps: settings.frameRate }) + hint;
 }
 updateExportInfo();
 
@@ -653,7 +656,9 @@ recordBtn.addEventListener("click", async () => {
 
 function setRecording(on: boolean) {
   recordBtn.setAttribute("aria-pressed", String(on));
-  recordBtn.querySelector(".label")!.textContent = on ? "Stop recording" : "Record screen";
+  const label = recordBtn.querySelector<HTMLElement>(".label")!;
+  label.dataset.i18n = on ? "rec.stop" : "rec.start";
+  label.textContent = t(on ? "rec.stop" : "rec.start");
 }
 
 // ---- Transport ---------------------------------------------------------------
@@ -745,7 +750,7 @@ function syncTransport() {
   if (document.activeElement !== scrub) scrub.value = String(d ? Math.round((video.currentTime / d) * 1000) : 0);
   timeLabel.textContent = `${formatTime(video.currentTime)} / ${formatTime(d)}`;
   playIcon.setAttribute("d", video.paused ? "M6 4l10 6-10 6z" : "M5 4h3.5v12H5zM11.5 4H15v12h-3.5z");
-  playBtn.setAttribute("aria-label", video.paused ? "Play" : "Pause");
+  playBtn.setAttribute("aria-label", t(video.paused ? "play" : "pause"));
   // Stop at the trim end during normal playback (export handles its own range).
   if (!exporting && !video.paused && video.currentTime >= trim.end) {
     video.pause();
@@ -821,7 +826,7 @@ let autoZoomJob: { cancel(): void } | null = null;
 autoZoomBtn.addEventListener("click", async () => {
   if (autoZoomJob) return autoZoomJob.cancel();
   if (!sourceBlob) return;
-  autoZoomBtn.textContent = "Cancel scan";
+  autoZoomBtn.textContent = t("auto.cancel");
   notify("Looking for moments to zoom in on…", true);
   const { scanForZooms } = await import("./autoZoomScan");
   const job = scanForZooms({
@@ -841,7 +846,7 @@ autoZoomBtn.addEventListener("click", async () => {
     failed = true;
   }
   autoZoomJob = null;
-  autoZoomBtn.textContent = "Auto zoom";
+  autoZoomBtn.textContent = t("auto.zoom");
   if (failed) return notify("Auto zoom couldn't read this video in this browser.");
   if (!found) return notify("Auto zoom cancelled.");
   if (found.length === 0) return notify("No spots to zoom on: nothing changed in a small enough area. Add zooms by hand instead.");
@@ -1285,7 +1290,7 @@ exportBtn.addEventListener("click", async () => {
     await exportGifPath(stamp);
     return;
   }
-  exportBtn.textContent = "Cancel export";
+  exportBtn.textContent = t("export.cancel");
   let result: { blob: Blob | null; ext: string } | null = null;
   try {
     result = await exportFastPath();
@@ -1326,7 +1331,7 @@ async function exportGifPath(stamp: string) {
     notify(`GIFs are limited to ${GIF_MAX_SECONDS} s. Trim the clip (I / O keys) or export a video instead.`);
     return;
   }
-  exportBtn.textContent = "Cancel export";
+  exportBtn.textContent = t("export.cancel");
   const { exportGif } = await import("./gifExport");
   const job = exportGif({
     source: sourceBlob,
@@ -1555,3 +1560,18 @@ function clamp01(v: number) {
 }
 
 requestAnimationFrame(loop);
+
+// ---- Language ----------------------------------------------------------------
+
+const langBtn = $<HTMLButtonElement>("lang");
+onLangChange((l) => {
+  // The button offers the other language, written in that language.
+  const other = l === "ja" ? "en" : "ja";
+  langBtn.textContent = LANG_NAMES[other];
+  langBtn.lang = other;
+  autoZoomBtn.textContent = t(autoZoomJob ? "auto.cancel" : "auto.zoom");
+  if (exporting) exportBtn.textContent = t("export.cancel");
+  updateExportInfo();
+  syncTransport();
+});
+langBtn.addEventListener("click", () => setLang(lang() === "ja" ? "en" : "ja"));
