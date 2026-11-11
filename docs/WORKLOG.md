@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-11 13:00 JST — export in a worker (opt-in)
+- `exportWorker.ts` runs the WebCodecs export in a module worker on an OffscreenCanvas with the same renderer (`Ctx2D` type in `render.ts`; `fastExport.ts` makes an OffscreenCanvas when there is no `document`). Image backdrops go over as a transferred ImageBitmap; the camera bubble decodes inside the worker. `workerExport.ts` (tested with a fake worker) relays progress / cancel and falls back to the page on any failure.
+- Measured in headless Chromium (2 CPUs, sample clip, 1080p60 MP4, image backdrop, auto zooms, a callout): page 27 s, worker 53 s; longest UI frame gap 133 ms vs 67 ms. A micro-benchmark shows drawing on an OffscreenCanvas in a worker is ~2× slower there (software raster), so the worker is opt-in with `?export=worker` until it is measured on real GPUs. Both outputs: 480 frames, identical frames. Tests: 166 passing.
+- Next: cursor highlight, or measure the worker on a real machine.
+
 ## 2026-11-10 09:00 JST — time left, launch drafts
 - Export (MP4 / WebM / GIF / real-time) and auto-zoom toasts add "about 20 s left" once 3 % and 1.5 s are done (`eta.ts`, pure and tested: average rate, 5 s steps under a minute, whole minutes above; English and Japanese).
 - Fix: in Japanese a failed GIF export showed "Export cancelled" instead of the error (the check compared the toast with English text); now a flag.
