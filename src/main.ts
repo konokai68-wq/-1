@@ -5,7 +5,7 @@ import { fitFrame, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
-import { ASPECTS, BACKDROPS, canvasMeasure, drawFrame, type Backdrop, type CameraLayer, type Style } from "./render";
+import { ASPECTS, BACKDROPS, canvasMeasure, drawFrame, type Backdrop, type CameraLayer, type Ctx2D, type Style } from "./render";
 import {
   MIN_TEXT_LENGTH,
   TEXT_LOOKS,
@@ -1391,7 +1391,7 @@ async function exportGifPath(stamp: string) {
   }
 }
 
-type Draw = (c: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: { width: number; height: number }, time: number) => Promise<void>;
+type Draw = (c: Ctx2D, frame: CanvasImageSource, frameSize: { width: number; height: number }, time: number) => Promise<void>;
 
 let exportCamera: { dispose(): void } | null = null;
 
@@ -1421,6 +1421,12 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
   const plan = await detectFastExport(sourceBlob, size);
   if (!plan) return null;
   const started = performance.now();
+  const onProgress = progressToast((pct) => t("msg.progress", { ext: plan.container.toUpperCase(), pct }));
+  const inWorker = await exportFastInWorker(sourceBlob, size, plan, onProgress);
+  if (inWorker !== undefined) {
+    console.info(`Exported in a worker in ${((performance.now() - started) / 1000).toFixed(1)} s`);
+    return { blob: inWorker, ext: plan.container };
+  }
   const job = exportFast({
     source: sourceBlob,
     size,
@@ -1430,7 +1436,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     speeds,
     frameRate: settings.frameRate,
     draw: await styledDraw(),
-    onProgress: progressToast((pct) => t("msg.progress", { ext: plan.container.toUpperCase(), pct })),
+    onProgress,
   });
   exporting = job;
   let blob: Blob | null;
@@ -1441,6 +1447,67 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
   }
   console.info(`Exported in ${((performance.now() - started) / 1000).toFixed(1)} s`);
   return { blob, ext: job.extension };
+}
+
+/**
+ * Export in a worker so the page stays responsive (opt-in with
+ * `?export=worker`, see workerExport.ts). Resolves to the file (or
+ * null when cancelled), or to undefined when the worker isn't available or
+ * failed, so the caller exports on the page instead.
+ */
+async function exportFastInWorker(
+  source: Blob,
+  size: { width: number; height: number },
+  plan: import("./fastExport").OutputPlan,
+  onProgress: (fraction: number) => void,
+): Promise<Blob | null | undefined> {
+  if (!location.search.includes("export=worker")) return undefined;
+  const { exportInWorker, workerExportRequested, workerExportSupported } = await import("./workerExport");
+  if (!workerExportRequested(location.search) || !workerExportSupported()) return undefined;
+  let workerStyle: Style = style;
+  const transfer: Transferable[] = [];
+  let cancelled = false;
+  try {
+    if (style.backdrop.kind === "image") {
+      const bitmap = await createImageBitmap(style.backdrop.image as ImageBitmapSource);
+      workerStyle = { ...style, backdrop: { ...style.backdrop, image: bitmap } };
+      transfer.push(bitmap);
+    }
+    const worker = new Worker(new URL("./exportWorker.ts", import.meta.url), { type: "module" });
+    const job = exportInWorker(
+      worker,
+      {
+        type: "start",
+        source,
+        camera: cameraBlob,
+        size,
+        plan,
+        range: { ...trim },
+        cuts: cuts.map((c) => ({ ...c })),
+        speeds: speeds.map((s) => ({ ...s })),
+        frameRate: settings.frameRate,
+        style: workerStyle,
+        zooms: zooms.map((z) => ({ ...z })),
+        bubble: { ...bubble },
+        texts: texts.map((n) => ({ ...n, arrow: n.arrow ? { ...n.arrow } : n.arrow })),
+      },
+      onProgress,
+      transfer,
+    );
+    exporting = {
+      done: job.done,
+      cancel: () => {
+        cancelled = true;
+        job.cancel();
+      },
+    };
+    return await job.done;
+  } catch (err) {
+    exporting = null;
+    if (cancelled) return null;
+    console.warn("Export worker failed, exporting on the page instead.", err);
+    return undefined;
+  }
 }
 
 // ---- Autosave / resume ------------------------------------------------------

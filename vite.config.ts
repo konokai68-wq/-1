@@ -7,6 +7,8 @@ const env = (globalThis as { process?: { env: Record<string, string | undefined>
 
 export default defineConfig({
   base: "./",
+  // Module workers so the export worker can share lazily loaded chunks.
+  worker: { format: "es" },
   plugins: [
     {
       name: "panreel-social-meta",

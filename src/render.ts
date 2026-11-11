@@ -2,6 +2,9 @@ import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, fitFrame, sourceWindow, type Size, type ZoomSegment } from "./layout";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
+/** 2D context of an on-page canvas or of an OffscreenCanvas (export worker). */
+export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+
 export interface GradientBackdrop {
   kind: "gradient";
   id: string;
@@ -65,7 +68,7 @@ export interface CameraLayer {
 }
 
 export function drawFrame(
-  ctx: CanvasRenderingContext2D,
+  ctx: Ctx2D,
   source: CanvasImageSource | null,
   sourceSize: Size,
   style: Style,
@@ -111,7 +114,7 @@ export function drawFrame(
 export const textFont = (px: number) => `650 ${px}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
 
 /** Width measurer for layoutText, using the canvas's own font metrics. */
-export function canvasMeasure(ctx: CanvasRenderingContext2D) {
+export function canvasMeasure(ctx: Ctx2D) {
   return (fontSize: number) => {
     ctx.font = textFont(fontSize);
     return (s: string) => ctx.measureText(s).width;
@@ -119,7 +122,7 @@ export function canvasMeasure(ctx: CanvasRenderingContext2D) {
 }
 
 /** Draw the text callout shown at `time`: an optional arrow, then a pill that fades and rises in. */
-export function drawTexts(ctx: CanvasRenderingContext2D, texts: readonly TextNote[], time: number): void {
+export function drawTexts(ctx: Ctx2D, texts: readonly TextNote[], time: number): void {
   const i = textIndexAt(texts, time);
   if (i < 0) return;
   const note = texts[i];
@@ -157,7 +160,7 @@ export function drawTexts(ctx: CanvasRenderingContext2D, texts: readonly TextNot
 }
 
 /** A callout arrow: a thin outline in `outline`, then shaft and head in `color`. */
-function drawArrow(ctx: CanvasRenderingContext2D, a: ArrowGeometry, color: string, outline: string): void {
+function drawArrow(ctx: Ctx2D, a: ArrowGeometry, color: string, outline: string): void {
   const rim = Math.max(1, a.width * 0.35);
   const path = (extra: number) => {
     ctx.lineWidth = a.width + extra;
@@ -191,7 +194,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, a: ArrowGeometry, color: strin
 }
 
 /** Draw the webcam bubble: soft shadow, cropped camera picture and a thin rim. */
-export function drawBubble(ctx: CanvasRenderingContext2D, camera: CameraLayer): void {
+export function drawBubble(ctx: Ctx2D, camera: CameraLayer): void {
   const { width, height } = ctx.canvas;
   const rect = bubbleRect({ width, height }, camera.bubble);
   const r = bubbleRadius(rect, camera.bubble.shape);
@@ -224,7 +227,7 @@ export function drawBubble(ctx: CanvasRenderingContext2D, camera: CameraLayer): 
   ctx.restore();
 }
 
-function paintBackdrop(ctx: CanvasRenderingContext2D, b: Backdrop, w: number, h: number): void {
+function paintBackdrop(ctx: Ctx2D, b: Backdrop, w: number, h: number): void {
   if (b.kind === "solid") {
     ctx.fillStyle = b.color;
     ctx.fillRect(0, 0, w, h);
@@ -246,7 +249,7 @@ function paintBackdrop(ctx: CanvasRenderingContext2D, b: Backdrop, w: number, h:
   ctx.fillRect(0, 0, w, h);
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+function roundRect(ctx: Ctx2D, x: number, y: number, w: number, h: number, r: number): void {
   const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
   ctx.moveTo(x + rr, y);

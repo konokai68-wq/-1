@@ -26,6 +26,7 @@ import {
 import { pieces, toOutputTime, type Span, type SpeedSpan } from "./cuts";
 import type { Size } from "./layout";
 import type { ExportJob } from "./media";
+import type { Ctx2D } from "./render";
 
 export interface OutputPlan {
   container: "mp4" | "webm";
@@ -145,7 +146,7 @@ export interface FastExportOptions {
   speeds: readonly SpeedSpan[];
   frameRate: number;
   /** Draw one styled frame for `time` (seconds on the source timeline). */
-  draw: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
+  draw: (ctx: Ctx2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
   onProgress: (fraction: number) => void;
 }
 
@@ -153,11 +154,20 @@ export interface FastExportJob extends ExportJob {
   extension: "mp4" | "webm";
 }
 
-export function exportFast(opts: FastExportOptions): FastExportJob {
+/** A drawing surface that works on the page and inside a worker. */
+function makeCanvas(size: Size): { canvas: HTMLCanvasElement | OffscreenCanvas; ctx: Ctx2D } {
+  if (typeof document === "undefined") {
+    const canvas = new OffscreenCanvas(size.width, size.height);
+    return { canvas, ctx: canvas.getContext("2d")! };
+  }
   const canvas = document.createElement("canvas");
-  canvas.width = opts.size.width;
-  canvas.height = opts.size.height;
-  const ctx = canvas.getContext("2d")!;
+  canvas.width = size.width;
+  canvas.height = size.height;
+  return { canvas, ctx: canvas.getContext("2d")! };
+}
+
+export function exportFast(opts: FastExportOptions): FastExportJob {
+  const { canvas, ctx } = makeCanvas(opts.size);
   let conversion: Conversion | null = null;
   let cancelled = false;
 
