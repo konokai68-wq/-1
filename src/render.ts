@@ -1,5 +1,5 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
-import { cameraAt, coverRect, fitFrame, sourceWindow, type Size, type ZoomSegment } from "./layout";
+import { cameraAt, coverRect, sourceWindow, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
 /** 2D context of an on-page canvas or of an OffscreenCanvas (export worker). */
@@ -58,6 +58,8 @@ export interface Style {
   radius: number;
   /** Shadow strength 0–1. */
   shadow: number;
+  /** Optional window title bar above the recording. */
+  chrome: WindowChrome;
 }
 
 /** A webcam picture to draw as a bubble over the frame. */
@@ -80,7 +82,7 @@ export function drawFrame(
   const { width, height } = ctx.canvas;
   paintBackdrop(ctx, style.backdrop, width, height);
 
-  const frame = fitFrame({ width, height }, sourceSize, style.padding);
+  const { outer: frame, bar, content } = windowLayout({ width, height }, sourceSize, style.padding, style.chrome);
   const r = style.radius * Math.min(frame.width, frame.height);
 
   if (style.shadow > 0) {
@@ -99,15 +101,48 @@ export function drawFrame(
   ctx.clip();
   if (source && sourceSize.width > 0) {
     const win = sourceWindow(sourceSize, cameraAt(time, zooms));
-    ctx.drawImage(source, win.x, win.y, win.width, win.height, frame.x, frame.y, frame.width, frame.height);
+    ctx.drawImage(source, win.x, win.y, win.width, win.height, content.x, content.y, content.width, content.height);
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.fillRect(frame.x, frame.y, frame.width, frame.height);
+    ctx.fillRect(content.x, content.y, content.width, content.height);
   }
+  if (bar && style.chrome !== "none") drawTitleBar(ctx, bar, style.chrome);
   ctx.restore();
 
   if (camera?.bubble.visible && camera.size.width > 0) drawBubble(ctx, camera);
   drawTexts(ctx, texts, time);
+}
+
+const CHROME_COLORS = {
+  light: { bar: "#eceef2", line: "rgba(20, 24, 32, 0.10)", dot: "#c3c8d1", field: "#ffffff" },
+  dark: { bar: "#23262d", line: "rgba(0, 0, 0, 0.45)", dot: "#4c525d", field: "#33373f" },
+} as const;
+
+/** A plain window title bar: three neutral dots and an empty address field. */
+function drawTitleBar(ctx: Ctx2D, bar: Rect, chrome: Exclude<WindowChrome, "none">): void {
+  const c = CHROME_COLORS[chrome];
+  const h = bar.height;
+  ctx.fillStyle = c.bar;
+  ctx.fillRect(bar.x, bar.y, bar.width, h);
+  ctx.fillStyle = c.line;
+  ctx.fillRect(bar.x, bar.y + h - Math.max(1, h * 0.03), bar.width, Math.max(1, h * 0.03));
+
+  const dot = h * 0.13;
+  const cy = bar.y + h / 2;
+  ctx.fillStyle = c.dot;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(bar.x + h * 0.6 + i * dot * 3.2, cy, dot, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const fieldW = Math.min(bar.width * 0.42, bar.width - h * 5);
+  if (fieldW > h) {
+    const fieldH = h * 0.56;
+    ctx.fillStyle = c.field;
+    roundRect(ctx, bar.x + (bar.width - fieldW) / 2, cy - fieldH / 2, fieldW, fieldH, fieldH * 0.3);
+    ctx.fill();
+  }
 }
 
 /** Font used for text callouts (the size is filled in per callout). */

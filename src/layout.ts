@@ -35,6 +35,42 @@ export function fitFrame(canvas: Size, video: Size, padding: number): Rect {
   };
 }
 
+/** Optional window title bar drawn above the recording. */
+export type WindowChrome = "none" | "light" | "dark";
+export const WINDOW_CHROMES: readonly WindowChrome[] = ["none", "light", "dark"];
+
+/** Title bar height as a fraction of the video's longer side (in source pixels). */
+export const WINDOW_BAR = 0.034;
+
+export interface WindowLayout {
+  /** The whole framed window: title bar plus recording. */
+  outer: Rect;
+  /** The title bar, or null when there is no window chrome. */
+  bar: Rect | null;
+  /** Where the recording itself is drawn. */
+  content: Rect;
+}
+
+/**
+ * Like fitFrame, but leaves room for a title bar above the recording when
+ * `chrome` is not "none". The bar and the recording share one outline, so the
+ * recording keeps its aspect ratio and the bar keeps its height when zooming.
+ */
+export function windowLayout(canvas: Size, video: Size, padding: number, chrome: WindowChrome): WindowLayout {
+  if (chrome === "none" || video.width <= 0 || video.height <= 0) {
+    const outer = fitFrame(canvas, video, padding);
+    return { outer, bar: null, content: outer };
+  }
+  const barSrc = Math.max(video.width, video.height) * WINDOW_BAR;
+  const outer = fitFrame(canvas, { width: video.width, height: video.height + barSrc }, padding);
+  const barH = (outer.height * barSrc) / (video.height + barSrc);
+  return {
+    outer,
+    bar: { x: outer.x, y: outer.y, width: outer.width, height: barH },
+    content: { x: outer.x, y: outer.y + barH, width: outer.width, height: outer.height - barH },
+  };
+}
+
 /** A span of time during which the camera zooms toward a point. */
 export interface ZoomSegment {
   start: number; // seconds

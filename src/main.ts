@@ -1,7 +1,7 @@
 import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { etaTracker, withLeft } from "./eta";
-import { fitFrame, type ZoomSegment } from "./layout";
+import { WINDOW_CHROMES, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
@@ -119,7 +119,7 @@ const resumeBtn = $<HTMLButtonElement>("resumeBtn");
 const discardBtn = $<HTMLButtonElement>("discardBtn");
 const resumeInfo = $("resumeInfo");
 
-const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6 };
+const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none" };
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
@@ -333,6 +333,17 @@ function updateExportInfo() {
   exportInfo.textContent = t("export.info", { w: s.width, h: s.height, fps: settings.frameRate }) + hint;
 }
 updateExportInfo();
+
+const windowGroup = $("windowChrome");
+for (const c of WINDOW_CHROMES) {
+  const label = { none: "None", light: "Light", dark: "Dark" }[c];
+  radio(windowGroup, "windowChrome", c, label, c === style.chrome, () => (style.chrome = c), `window.${c}`);
+}
+
+function applyChrome(c: WindowChrome) {
+  style.chrome = c;
+  windowGroup.querySelectorAll<HTMLInputElement>("input").forEach((i) => (i.checked = i.value === c));
+}
 
 for (const key of ["padding", "radius", "shadow"] as const) {
   const input = $<HTMLInputElement>(key);
@@ -926,7 +937,7 @@ canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
   const cx = ((e.clientX - rect.left) / rect.width) * canvas.width;
   const cy = ((e.clientY - rect.top) / rect.height) * canvas.height;
-  const f = fitFrame(canvas, sourceSize(), style.padding);
+  const f = windowLayout(canvas, sourceSize(), style.padding, style.chrome).content;
   const fx = (cx - f.x) / f.width;
   const fy = (cy - f.y) / f.height;
   checkpoint();
@@ -1530,6 +1541,7 @@ function projectData(): ProjectData {
     duration: video.duration,
     aspect: aspectSelect.value,
     frame: s.frame,
+    chrome: style.chrome,
     backdrop: savedBackdrop(),
     bubble: { ...bubble },
     zooms: s.zooms,
@@ -1612,6 +1624,7 @@ async function resume() {
   updateExportInfo();
   await applyBackdrop(p.backdrop, saved.media.backdrop);
   applyBubble(p.bubble);
+  applyChrome(p.chrome);
   restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, frame: p.frame });
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;

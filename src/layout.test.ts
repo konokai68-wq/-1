@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraAt, coverRect, easeInOut, fitFrame, sourceWindow, ZOOM_RAMP } from "./layout";
+import { cameraAt, coverRect, easeInOut, fitFrame, sourceWindow, windowLayout, WINDOW_BAR, ZOOM_RAMP } from "./layout";
 
 describe("fitFrame", () => {
   it("centers a 16:9 video inside a 16:9 canvas with padding", () => {
@@ -100,5 +100,43 @@ describe("coverRect", () => {
 
   it("falls back to the full canvas for an empty image", () => {
     expect(coverRect({ width: 100, height: 50 }, { width: 0, height: 0 })).toEqual({ x: 0, y: 0, width: 100, height: 50 });
+  });
+});
+
+describe("windowLayout", () => {
+  const canvas = { width: 1920, height: 1080 };
+  const video = { width: 1600, height: 900 };
+
+  it("matches fitFrame with no chrome", () => {
+    const l = windowLayout(canvas, video, 0.1, "none");
+    expect(l.bar).toBeNull();
+    expect(l.content).toEqual(fitFrame(canvas, video, 0.1));
+    expect(l.outer).toEqual(l.content);
+  });
+
+  it("puts a title bar above the recording and keeps its aspect ratio", () => {
+    const l = windowLayout(canvas, video, 0.1, "dark");
+    expect(l.bar).not.toBeNull();
+    const bar = l.bar!;
+    expect(bar.y).toBeCloseTo(l.outer.y);
+    expect(l.content.y).toBeCloseTo(bar.y + bar.height);
+    expect(bar.height + l.content.height).toBeCloseTo(l.outer.height);
+    expect(l.content.width / l.content.height).toBeCloseTo(video.width / video.height);
+    // Bar height in canvas pixels matches WINDOW_BAR of the longer source side.
+    const scale = l.content.width / video.width;
+    expect(bar.height).toBeCloseTo(video.width * WINDOW_BAR * scale);
+  });
+
+  it("still fits inside the padded canvas", () => {
+    const l = windowLayout(canvas, video, 0.1, "light");
+    const p = 0.1 * 1080;
+    expect(l.outer.y).toBeGreaterThanOrEqual(p - 1e-6);
+    expect(l.outer.y + l.outer.height).toBeLessThanOrEqual(1080 - p + 1e-6);
+    expect(l.outer.x + l.outer.width / 2).toBeCloseTo(960);
+  });
+
+  it("falls back to fitFrame for an empty video", () => {
+    const l = windowLayout(canvas, { width: 0, height: 0 }, 0.1, "dark");
+    expect(l.bar).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ const good: ProjectData = {
   duration: 10,
   aspect: "1:1",
   frame: { padding: 0.1, radius: 0.03, shadow: 0.5 },
+  chrome: "dark",
   backdrop: { kind: "solid", color: "#112233" },
   bubble: { visible: false, shape: "rounded", size: 0.3, corner: "tl", mirror: false },
   zooms: [{ start: 1, end: 3, scale: 1.8, focusX: 0.2, focusY: 0.7 }],
@@ -22,6 +23,12 @@ const good: ProjectData = {
 describe("sanitizeProject", () => {
   it("keeps a valid project as it is", () => {
     expect(sanitizeProject(JSON.parse(JSON.stringify(good)), defaults)).toEqual(good);
+  });
+
+  it("defaults the window chrome for older or broken projects", () => {
+    const { chrome: _, ...old } = good;
+    expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.chrome).toBe("none");
+    expect(sanitizeProject({ ...good, chrome: "neon" }, defaults)?.chrome).toBe("none");
   });
 
   it("rejects things that are not projects", () => {

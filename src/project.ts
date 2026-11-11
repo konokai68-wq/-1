@@ -1,6 +1,6 @@
 import type { Bubble, BubbleShape, Corner } from "./camera";
 import { SPEED_RATES, type Span, type SpeedSpan } from "./cuts";
-import type { ZoomSegment } from "./layout";
+import { WINDOW_CHROMES, type WindowChrome, type ZoomSegment } from "./layout";
 import type { TextLook, TextNote } from "./texts";
 import type { Trim } from "./trim";
 import { translate, type Key, type Lang } from "./i18n";
@@ -17,6 +17,8 @@ export interface ProjectData {
   duration: number;
   aspect: string;
   frame: { padding: number; radius: number; shadow: number };
+  /** Window title bar; missing in projects saved before it existed. */
+  chrome: WindowChrome;
   backdrop: SavedBackdrop;
   bubble: Bubble;
   zooms: ZoomSegment[];
@@ -79,6 +81,8 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
     shadow: unit(f.shadow, defaults.frame.shadow),
   };
 
+  const chrome = WINDOW_CHROMES.includes(raw.chrome as WindowChrome) ? (raw.chrome as WindowChrome) : "none";
+
   const b = isObj(raw.backdrop) ? raw.backdrop : {};
   let backdrop: SavedBackdrop = { kind: "gradient", id: "" };
   if (b.kind === "gradient" && typeof b.id === "string") backdrop = { kind: "gradient", id: b.id };
@@ -123,7 +127,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
     return note;
   }).sort(byStart);
 
-  return { version: PROJECT_VERSION, name, duration, aspect, frame, backdrop, bubble, zooms, trim, cuts, speeds, texts };
+  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, backdrop, bubble, zooms, trim, cuts, speeds, texts };
 }
 
 /** "3 zooms · 1 cut · 2 texts", or "" when nothing has been added yet. */
