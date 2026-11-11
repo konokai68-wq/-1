@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-11 22:00 JST — blur boxes
+- *Blur → Add blur box* hides emails, names or keys for the whole clip: drag the box on the preview, drag its bottom-right handle to resize, pick *Pixelate* or *Solid*. Boxes live in source-video coordinates (`masks.ts`, pure and tested), so they stick to the same spot through zooms; pixel blocks are sized on the unzoomed frame so zooming never reveals more detail.
+- Drawn inside `drawFrame` (every export, the worker too); the dashed outline and handle are preview-only. Saved with the project (older projects get none), part of undo, English / Japanese labels, counted in the resume summary.
+- Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip, two boxes, drag, Solid, undo / redo, 1080p60 MP4 (480 frames) shows both boxes and no outlines, reload → Resume keeps them; no page errors. Tests: 181 passing.
+- Next: cursor highlight, or time ranges for blur boxes.
+
 ## 2026-11-11 18:00 JST — window frame
 - *Frame → Window: None / Light / Dark* draws a plain title bar (three neutral dots, empty address field) above the recording. `windowLayout` (pure, tested) fits bar + recording inside the padding with one rounded outline; zooms only move inside the recording, click-to-aim maps through the content rect.
 - Saved with the project (`chrome`, older projects default to none); in every export because it is part of `drawFrame`. English / Japanese labels.
