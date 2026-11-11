@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-11 18:00 JST — window frame
+- *Frame → Window: None / Light / Dark* draws a plain title bar (three neutral dots, empty address field) above the recording. `windowLayout` (pure, tested) fits bar + recording inside the padding with one rounded outline; zooms only move inside the recording, click-to-aim maps through the content rect.
+- Saved with the project (`chrome`, older projects default to none); in every export because it is part of `drawFrame`. English / Japanese labels.
+- Checked in headless Chromium (`en-US`, `ja-JP`): sample clip with a dark bar in the preview and a 1080p60 MP4 (480 frames), reload → Resume keeps it; no page errors. Tests: 171 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-11 13:00 JST — export in a worker (opt-in)
 - `exportWorker.ts` runs the WebCodecs export in a module worker on an OffscreenCanvas with the same renderer (`Ctx2D` type in `render.ts`; `fastExport.ts` makes an OffscreenCanvas when there is no `document`). Image backdrops go over as a transferred ImageBitmap; the camera bubble decodes inside the worker. `workerExport.ts` (tested with a fake worker) relays progress / cancel and falls back to the page on any failure.
 - Measured in headless Chromium (2 CPUs, sample clip, 1080p60 MP4, image backdrop, auto zooms, a callout): page 27 s, worker 53 s; longest UI frame gap 133 ms vs 67 ms. A micro-benchmark shows drawing on an OffscreenCanvas in a worker is ~2× slower there (software raster), so the worker is opt-in with `?export=worker` until it is measured on real GPUs. Both outputs: 480 frames, identical frames. Tests: 166 passing.
