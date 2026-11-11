@@ -31,7 +31,7 @@ scope.onmessage = async (e) => {
       scope.postMessage({ type: "done", blob: null });
       return;
     }
-    const { style, zooms, bubble, texts } = msg;
+    const { style, zooms, bubble, texts, masks } = msg;
     job = exportFast({
       source: msg.source,
       size: msg.size,
@@ -42,7 +42,7 @@ scope.onmessage = async (e) => {
       frameRate: msg.frameRate,
       draw: async (ctx, frame, frameSize, time) => {
         const f = cam ? await cam.at(time) : null;
-        drawFrame(ctx, frame, frameSize, style, zooms, time, f ? { ...f, bubble } : null, texts);
+        drawFrame(ctx, frame, frameSize, style, zooms, time, f ? { ...f, bubble } : null, texts, masks);
       },
       onProgress: (fraction) => scope.postMessage({ type: "progress", fraction }),
     });

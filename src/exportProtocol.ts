@@ -8,6 +8,7 @@ import type { Span, SpeedSpan } from "./cuts";
 import type { OutputPlan } from "./fastExport";
 import type { Size, ZoomSegment } from "./layout";
 import type { Style } from "./render";
+import type { Mask } from "./masks";
 import type { TextNote } from "./texts";
 
 export interface ExportRequest {
@@ -26,6 +27,7 @@ export interface ExportRequest {
   zooms: ZoomSegment[];
   bubble: Bubble;
   texts: TextNote[];
+  masks: Mask[];
 }
 
 export type ToWorker = ExportRequest | { type: "cancel" };

@@ -1,5 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, sourceWindow, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
+import { maskRect, pixelBlock, type Mask } from "./masks";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
 /** 2D context of an on-page canvas or of an OffscreenCanvas (export worker). */
@@ -78,6 +79,7 @@ export function drawFrame(
   time: number,
   camera: CameraLayer | null = null,
   texts: readonly TextNote[] = [],
+  masks: readonly Mask[] = [],
 ): void {
   const { width, height } = ctx.canvas;
   paintBackdrop(ctx, style.backdrop, width, height);
@@ -102,6 +104,7 @@ export function drawFrame(
   if (source && sourceSize.width > 0) {
     const win = sourceWindow(sourceSize, cameraAt(time, zooms));
     ctx.drawImage(source, win.x, win.y, win.width, win.height, content.x, content.y, content.width, content.height);
+    if (masks.length) drawMasks(ctx, source, sourceSize, win, content, masks);
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(content.x, content.y, content.width, content.height);
@@ -111,6 +114,46 @@ export function drawFrame(
 
   if (camera?.bubble.visible && camera.size.width > 0) drawBubble(ctx, camera);
   drawTexts(ctx, texts, time);
+}
+
+let scratch: OffscreenCanvas | HTMLCanvasElement | null = null;
+
+function scratchCanvas(w: number, h: number): OffscreenCanvas | HTMLCanvasElement {
+  if (!scratch) scratch = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : document.createElement("canvas");
+  if (scratch.width < w) scratch.width = w;
+  if (scratch.height < h) scratch.height = h;
+  return scratch;
+}
+
+/** Hide each blur box: big pixel blocks of what is underneath, or a flat dark fill. */
+function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, win: Rect, content: Rect, masks: readonly Mask[]): void {
+  const block = pixelBlock(ctx.canvas);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(content.x, content.y, content.width, content.height);
+  ctx.clip();
+  for (const m of masks) {
+    const r = maskRect(m, sourceSize, win, content);
+    if (m.look === "solid") {
+      ctx.fillStyle = "#15171c";
+      ctx.fillRect(r.x, r.y, r.width, r.height);
+      continue;
+    }
+    // Blocks are sized on the unzoomed frame, so zooming in makes them bigger, never more detailed.
+    const cols = Math.max(1, Math.ceil((m.width * content.width) / block));
+    const rows = Math.max(1, Math.ceil((m.height * content.height) / block));
+    const tiny = scratchCanvas(cols, rows);
+    const tctx = tiny.getContext("2d") as Ctx2D | null;
+    if (!tctx) continue;
+    tctx.imageSmoothingEnabled = true;
+    tctx.imageSmoothingQuality = "high";
+    tctx.clearRect(0, 0, cols, rows);
+    tctx.drawImage(source, m.x * sourceSize.width, m.y * sourceSize.height, m.width * sourceSize.width, m.height * sourceSize.height, 0, 0, cols, rows);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tiny, 0, 0, cols, rows, r.x, r.y, r.width, r.height);
+    ctx.imageSmoothingEnabled = true;
+  }
+  ctx.restore();
 }
 
 const CHROME_COLORS = {

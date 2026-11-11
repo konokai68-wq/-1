@@ -18,6 +18,7 @@ const good: ProjectData = {
   cuts: [{ start: 4, end: 5 }],
   speeds: [{ start: 6, end: 8, rate: 4 }],
   texts: [{ start: 1, end: 4, text: "Hi", x: 0.5, y: 0.2, size: 0.05, look: "accent", arrow: { x: 0.6, y: 0.6 } }],
+  masks: [{ x: 0.1, y: 0.1, width: 0.3, height: 0.1, look: "solid" }],
 };
 
 describe("sanitizeProject", () => {
@@ -86,14 +87,21 @@ describe("sanitizeProject", () => {
     )!;
     expect(p.texts).toEqual([{ start: 0, end: 2, text: "A", x: 1, y: 0.5, size: 0.05, look: "dark" }]);
   });
+
+  it("repairs blur boxes and defaults them for older projects", () => {
+    const { masks: _, ...old } = good;
+    expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.masks).toEqual([]);
+    const p = sanitizeProject({ ...good, masks: [{ x: 0.9, y: 0, width: 0.3, height: 0.1, look: "neon" }, { x: "a" }, null] }, defaults)!;
+    expect(p.masks).toEqual([{ x: 0.7, y: 0, width: 0.3, height: 0.1, look: "pixel" }]);
+  });
 });
 
 describe("editSummary", () => {
   it("lists what was added", () => {
-    expect(editSummary(good)).toBe("1 zoom · 1 cut · 1 speed-up · 1 text");
-    expect(editSummary(good, "ja")).toBe("ズーム1 · カット1 · 早送り1 · 文字1");
+    expect(editSummary(good)).toBe("1 zoom · 1 cut · 1 speed-up · 1 text · 1 blur box");
+    expect(editSummary(good, "ja")).toBe("ズーム1 · カット1 · 早送り1 · 文字1 · ぼかし1");
     expect(editSummary({ zooms: [], cuts: [], speeds: [], texts: [] })).toBe("");
-    expect(editSummary({ ...good, zooms: [good.zooms[0], good.zooms[0]], cuts: [], speeds: [], texts: [] })).toBe("2 zooms");
+    expect(editSummary({ ...good, zooms: [good.zooms[0], good.zooms[0]], cuts: [], speeds: [], texts: [], masks: [] })).toBe("2 zooms");
   });
 });
 

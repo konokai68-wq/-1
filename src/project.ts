@@ -1,6 +1,7 @@
 import type { Bubble, BubbleShape, Corner } from "./camera";
 import { SPEED_RATES, type Span, type SpeedSpan } from "./cuts";
 import { WINDOW_CHROMES, type WindowChrome, type ZoomSegment } from "./layout";
+import { MASK_LOOKS, MAX_MASKS, clampMask, type Mask, type MaskLook } from "./masks";
 import type { TextLook, TextNote } from "./texts";
 import type { Trim } from "./trim";
 import { translate, type Key, type Lang } from "./i18n";
@@ -26,6 +27,8 @@ export interface ProjectData {
   cuts: Span[];
   speeds: SpeedSpan[];
   texts: TextNote[];
+  /** Blur boxes; missing in projects saved before they existed. */
+  masks: Mask[];
 }
 
 export type SavedBackdrop = { kind: "gradient"; id: string } | { kind: "solid"; color: string } | { kind: "image"; blur: number };
@@ -127,16 +130,23 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
     return note;
   }).sort(byStart);
 
-  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, backdrop, bubble, zooms, trim, cuts, speeds, texts };
+  const masks = list<Mask>(raw.masks, (m) => {
+    if (!isObj(m) || !num(m.x) || !num(m.y) || !num(m.width) || !num(m.height)) return null;
+    const look = MASK_LOOKS.includes(m.look as MaskLook) ? (m.look as MaskLook) : "pixel";
+    return clampMask({ x: m.x, y: m.y, width: m.width, height: m.height, look });
+  }).slice(0, MAX_MASKS);
+
+  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
 }
 
-/** "3 zooms · 1 cut · 2 texts", or "" when nothing has been added yet. */
-export function editSummary(p: Pick<ProjectData, "zooms" | "cuts" | "speeds" | "texts">, lang: Lang = "en"): string {
+/** "3 zooms · 1 cut · 2 texts · 1 blur box", or "" when nothing has been added yet. */
+export function editSummary(p: Pick<ProjectData, "zooms" | "cuts" | "speeds" | "texts"> & { masks?: readonly Mask[] }, lang: Lang = "en"): string {
   const parts: [number, Key, Key][] = [
     [p.zooms.length, "sum.zoom", "sum.zooms"],
     [p.cuts.length, "sum.cut", "sum.cuts"],
     [p.speeds.length, "sum.speed", "sum.speeds"],
     [p.texts.length, "sum.text", "sum.texts"],
+    [p.masks?.length ?? 0, "sum.mask", "sum.masks"],
   ];
   return parts
     .filter(([n]) => n > 0)

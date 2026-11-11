@@ -1,7 +1,7 @@
 import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { etaTracker, withLeft } from "./eta";
-import { WINDOW_CHROMES, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
+import { WINDOW_CHROMES, cameraAt, sourceWindow, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
@@ -23,6 +23,7 @@ import {
 import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShape, type Corner } from "./camera";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
+import { MAX_MASKS, addMask, handleSize, maskHit, maskRect, moveMask, resizeMask, toSource, type Mask, type MaskLook } from "./masks";
 import { editSummary, sanitizeProject, timeAgo, type ProjectData, type SavedBackdrop } from "./project";
 import { clearProject, loadProject, saveMedia, saveMeta, type SavedProject } from "./projectStore";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
@@ -79,6 +80,9 @@ const addTextBtn = $<HTMLButtonElement>("addText");
 const textLane = $("textLane");
 const textList = $<HTMLUListElement>("textList");
 const textEmpty = $("textEmpty");
+const addMaskBtn = $<HTMLButtonElement>("addMask");
+const maskList = $<HTMLUListElement>("maskList");
+const maskEmpty = $("maskEmpty");
 const trimStartLabel = $("trimStart");
 const trimEndLabel = $("trimEnd");
 const setInBtn = $<HTMLButtonElement>("setIn");
@@ -125,6 +129,7 @@ let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
 let speeds: SpeedSpan[] = [];
 let texts: TextNote[] = [];
+let masks: Mask[] = [];
 let hasVideo = false;
 let recording: Recording | null = null;
 let exporting: ExportJob | null = null;
@@ -158,7 +163,41 @@ function render() {
     video.currentTime,
     previewCamera(),
     texts,
+    masks,
   );
+  if (hasVideo && !exporting && masks.length) drawMaskOutlines();
+}
+
+/** Where each blur box sits on the preview right now. */
+function maskRects() {
+  const src = sourceSize();
+  const { content } = windowLayout(canvas, src, style.padding, style.chrome);
+  const win = sourceWindow(src, cameraAt(video.currentTime, zooms));
+  return { rects: masks.map((m) => maskRect(m, src, win, content)), src, win, content };
+}
+
+/** Preview-only outline and resize handle on each blur box (never exported). */
+function drawMaskOutlines() {
+  const { rects } = maskRects();
+  const h = handleSize(canvas);
+  const lw = Math.max(2, canvas.width / 640);
+  ctx.save();
+  rects.forEach((r, i) => {
+    const on = maskDrag?.index === i;
+    ctx.lineWidth = lw;
+    ctx.setLineDash([lw * 4, lw * 3]);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.strokeRect(r.x, r.y, r.width, r.height);
+    ctx.lineDashOffset = lw * 3.5;
+    ctx.strokeStyle = on ? "rgba(240, 116, 62, 0.95)" : "rgba(10, 12, 16, 0.75)";
+    ctx.strokeRect(r.x, r.y, r.width, r.height);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "rgba(10, 12, 16, 0.75)";
+    ctx.fillRect(r.x + r.width - h / 2, r.y + r.height - h / 2, h, h);
+    ctx.strokeRect(r.x + r.width - h / 2, r.y + r.height - h / 2, h, h);
+  });
+  ctx.restore();
 }
 
 /** Keep the camera clip in step with the screen clip (both start at 0). */
@@ -365,6 +404,7 @@ interface EditState {
   cuts: Span[];
   speeds: SpeedSpan[];
   texts: TextNote[];
+  masks: Mask[];
   frame: Pick<Style, (typeof FRAME_KEYS)[number]>;
 }
 
@@ -377,6 +417,7 @@ function snapshot(): EditState {
     cuts: cuts.map((c) => ({ ...c })),
     speeds: speeds.map((s) => ({ ...s })),
     texts: texts.map((n) => ({ ...n, ...(n.arrow ? { arrow: { ...n.arrow } } : {}) })),
+    masks: masks.map((m) => ({ ...m })),
     frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
   };
 }
@@ -394,6 +435,7 @@ function restore(s: EditState) {
   cuts = s.cuts;
   speeds = s.speeds;
   texts = s.texts;
+  masks = s.masks;
   for (const key of FRAME_KEYS) {
     style[key] = s.frame[key];
     $<HTMLInputElement>(key).value = String(s.frame[key]);
@@ -403,6 +445,7 @@ function restore(s: EditState) {
   renderCutUi();
   renderSpeedUi();
   renderTextUi();
+  renderMaskUi();
   syncHistoryUi();
 }
 
@@ -444,16 +487,18 @@ async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): 
     cuts = [];
     speeds = [];
     texts = [];
+    masks = [];
     trim = fullTrim(video.duration);
     history.clear();
     syncHistoryUi();
     empty.hidden = true;
-    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, autoZoomBtn, addCutBtn, addSpeedBtn, addTextBtn, setInBtn, setOutBtn]) el.disabled = false;
+    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, autoZoomBtn, addCutBtn, addSpeedBtn, addTextBtn, addMaskBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
     renderTrimUi();
     renderCutUi();
     renderSpeedUi();
     renderTextUi();
+    renderMaskUi();
     notify(t("msg.loaded", { len: formatTime(video.duration) }));
     return true;
   } catch (err) {
@@ -668,6 +713,57 @@ const endBubbleDrag = (e: PointerEvent) => {
 };
 canvas.addEventListener("pointerup", endBubbleDrag);
 canvas.addEventListener("pointercancel", endBubbleDrag);
+
+// Drag a blur box on the preview to move it, or its bottom-right handle to resize it.
+let maskDrag: { pointerId: number; index: number; part: "body" | "corner"; dx: number; dy: number; moved: boolean } | null = null;
+
+function maskUnder(x: number, y: number) {
+  if (!hasVideo || exporting || !masks.length || onBubble(x, y)) return null;
+  return maskHit(maskRects().rects, x, y, handleSize(canvas) * 0.75);
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  if (bubbleDrag) return;
+  const p = canvasPoint(e);
+  const hit = maskUnder(p.x, p.y);
+  if (!hit) return;
+  e.preventDefault();
+  video.pause();
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  const { src, win, content } = maskRects();
+  const at = toSource(p.x, p.y, src, win, content);
+  const m = masks[hit.index];
+  const anchor = hit.part === "corner" ? { x: m.x + m.width, y: m.y + m.height } : m;
+  maskDrag = { pointerId: e.pointerId, index: hit.index, part: hit.part, dx: anchor.x - at.x, dy: anchor.y - at.y, moved: false };
+  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add("moving-mask");
+});
+canvas.addEventListener("pointermove", (e) => {
+  const p = canvasPoint(e);
+  if (!maskDrag) {
+    const hit = textDrag || bubbleDrag ? null : maskUnder(p.x, p.y);
+    canvas.classList.toggle("over-mask", hit?.part === "body");
+    canvas.classList.toggle("over-mask-corner", hit?.part === "corner");
+    return;
+  }
+  if (e.pointerId !== maskDrag.pointerId) return;
+  if (!maskDrag.moved) checkpoint();
+  maskDrag.moved = true;
+  const { src, win, content } = maskRects();
+  const at = toSource(p.x, p.y, src, win, content);
+  const i = maskDrag.index;
+  const change = maskDrag.part === "corner" ? resizeMask : moveMask;
+  masks[i] = change(masks[i], at.x + maskDrag.dx, at.y + maskDrag.dy);
+});
+const endMaskDrag = (e: PointerEvent) => {
+  if (!maskDrag || e.pointerId !== maskDrag.pointerId) return;
+  // A press on a blur box never aims a zoom.
+  suppressClick = true;
+  maskDrag = null;
+  canvas.classList.remove("moving-mask");
+};
+canvas.addEventListener("pointerup", endMaskDrag);
+canvas.addEventListener("pointercancel", endMaskDrag);
 
 recordBtn.addEventListener("click", async () => {
   if (recording) {
@@ -1313,6 +1409,48 @@ function renderTextUi() {
   markActiveText();
 }
 
+// ---- Blur boxes --------------------------------------------------------------
+
+addMaskBtn.addEventListener("click", () => {
+  if (!hasVideo) return;
+  if (masks.length >= MAX_MASKS) return notify(t("msg.maskFull"));
+  checkpoint();
+  masks = addMask(masks);
+  renderMaskUi();
+  notify(t("msg.maskAdded"));
+});
+
+function renderMaskUi() {
+  maskList.replaceChildren(
+    ...masks.map((m, i) => {
+      const li = document.createElement("li");
+      const name = document.createElement("span");
+      name.textContent = t("mask.row", { n: i + 1 });
+      const look = document.createElement("select");
+      look.setAttribute("aria-label", t("mask.look"));
+      for (const id of ["pixel", "solid"] as const) look.add(new Option(t(id === "pixel" ? "mask.pixel" : "mask.solid"), id));
+      look.value = m.look;
+      look.addEventListener("change", () => {
+        checkpoint();
+        masks[i] = { ...masks[i], look: look.value as MaskLook };
+      });
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = t("row.remove");
+      del.addEventListener("click", () => {
+        checkpoint();
+        masks = masks.filter((_, j) => j !== i);
+        renderMaskUi();
+        notify(t("msg.maskRemoved"));
+      });
+      li.append(name, look, del);
+      return li;
+    }),
+  );
+  maskEmpty.hidden = false;
+  addMaskBtn.disabled = !hasVideo;
+}
+
 // ---- Export ------------------------------------------------------------------
 
 exportBtn.addEventListener("click", async () => {
@@ -1412,9 +1550,10 @@ async function styledDraw(): Promise<Draw> {
   exportCamera = cam;
   const b = { ...bubble };
   const notes = texts.map((n) => ({ ...n }));
+  const boxes = masks.map((m) => ({ ...m }));
   return async (c, frame, frameSize, time) => {
     const f = cam ? await cam.at(time) : null;
-    drawFrame(c, frame, frameSize, style, zooms, time, f ? { ...f, bubble: b } : null, notes);
+    drawFrame(c, frame, frameSize, style, zooms, time, f ? { ...f, bubble: b } : null, notes, boxes);
   };
 }
 
@@ -1501,6 +1640,7 @@ async function exportFastInWorker(
         zooms: zooms.map((z) => ({ ...z })),
         bubble: { ...bubble },
         texts: texts.map((n) => ({ ...n, arrow: n.arrow ? { ...n.arrow } : n.arrow })),
+        masks: masks.map((m) => ({ ...m })),
       },
       onProgress,
       transfer,
@@ -1549,6 +1689,7 @@ function projectData(): ProjectData {
     cuts: s.cuts,
     speeds: s.speeds,
     texts: s.texts,
+    masks: s.masks,
   };
 }
 
@@ -1625,7 +1766,7 @@ async function resume() {
   await applyBackdrop(p.backdrop, saved.media.backdrop);
   applyBubble(p.bubble);
   applyChrome(p.chrome);
-  restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, frame: p.frame });
+  restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame });
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;
   savedJson = JSON.stringify(projectData());
@@ -1703,6 +1844,7 @@ onLangChange((l) => {
     renderCutUi();
     renderSpeedUi();
     renderTextUi();
+    renderMaskUi();
   }
 });
 langBtn.addEventListener("click", () => setLang(lang() === "ja" ? "en" : "ja"));

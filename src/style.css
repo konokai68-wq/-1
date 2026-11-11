@@ -343,6 +343,10 @@ kbd {
 label.link-btn { cursor: pointer; }
 #canvas.over-text { cursor: move; }
 #canvas.moving-text { cursor: grabbing; }
+#canvas.over-mask { cursor: move; }
+#canvas.over-mask-corner { cursor: nwse-resize; }
+#canvas.moving-mask { cursor: grabbing; }
+.mask-list li { border-left: 3px solid var(--ink-soft); }
 .auto-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .auto-zoom .btn { flex: none; }
 .auto-zoom .note { margin: 0; }
