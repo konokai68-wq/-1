@@ -16,6 +16,7 @@ export type Action =
   | "forwardLong"
   | "toStart"
   | "toEnd"
+  | "still"
   | "help";
 
 export interface KeyInput {
@@ -40,6 +41,7 @@ export const SHORTCUTS: readonly { id: string; keys: string[]; label: string }[]
   { id: "text", keys: ["T"], label: "Add text at playhead" },
   { id: "arrow", keys: ["A"], label: "Arrow on / off for text at playhead" },
   { id: "remove", keys: ["Del"], label: "Remove cut, speed-up, text or zoom at playhead" },
+  { id: "still", keys: ["P"], label: "Save frame as PNG" },
   { id: "undo", keys: ["Ctrl/⌘ Z"], label: "Undo" },
   { id: "redo", keys: ["Ctrl/⌘ Shift Z"], label: "Redo" },
   { id: "help", keys: ["?"], label: "Show shortcuts" },
@@ -72,6 +74,8 @@ export function actionFor(e: KeyInput): Action | null {
       return "addText";
     case "a":
       return "arrow";
+    case "p":
+      return "still";
     case "Delete":
     case "Backspace":
       return "remove";

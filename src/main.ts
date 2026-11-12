@@ -2,6 +2,7 @@ import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { etaTracker, withLeft } from "./eta";
 import { WINDOW_CHROMES, cameraAt, sourceWindow, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
+import { stillFileName } from "./still";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
 import { GIF_FPS, GIF_MAX_SECONDS, gifSize, gifTooLong } from "./gif";
@@ -56,6 +57,7 @@ const focusHint = $("focusHint");
 const recordBtn = $<HTMLButtonElement>("record");
 const fileInput = $<HTMLInputElement>("file");
 const exportBtn = $<HTMLButtonElement>("export");
+const saveStillBtn = $<HTMLButtonElement>("saveStill");
 const playBtn = $<HTMLButtonElement>("play");
 const playIcon = document.getElementById("playIcon")!;
 const scrub = $<HTMLInputElement>("scrub");
@@ -634,7 +636,7 @@ async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): 
     history.clear();
     syncHistoryUi();
     empty.hidden = true;
-    for (const el of [exportBtn, playBtn, scrub, addZoomBtn, autoZoomBtn, addCutBtn, addSpeedBtn, addTextBtn, addMaskBtn, setInBtn, setOutBtn]) el.disabled = false;
+    for (const el of [exportBtn, saveStillBtn, playBtn, scrub, addZoomBtn, autoZoomBtn, addCutBtn, addSpeedBtn, addTextBtn, addMaskBtn, setInBtn, setOutBtn]) el.disabled = false;
     renderZoomUi();
     renderTrimUi();
     renderCutUi();
@@ -981,6 +983,7 @@ function runAction(action: Action) {
     case "addSpeed": return addSpeedBtn.click();
     case "addText": return addTextBtn.click();
     case "arrow": return arrowAtPlayhead();
+    case "still": return void saveStill();
     case "remove": return removeAtPlayhead();
     case "back": return step(-0.1);
     case "forward": return step(0.1);
@@ -1668,6 +1671,30 @@ exportBtn.addEventListener("click", async () => {
     notify(t("msg.exportCancelled"));
   }
 });
+
+// ---- Still frame -----------------------------------------------------------------
+
+saveStillBtn.addEventListener("click", () => void saveStill());
+
+/** Save the frame under the playhead as a PNG at the export size (preview-only outlines left out). */
+async function saveStill() {
+  if (!hasVideo || exporting) return;
+  video.pause();
+  const size = outputSize();
+  const out = document.createElement("canvas");
+  out.width = size.width;
+  out.height = size.height;
+  const c = out.getContext("2d");
+  if (!c) return notify(t("msg.stillFailed"));
+  const time = video.currentTime;
+  // A still is a single moment, so leave out the motion blur a moving zoom would add.
+  drawFrame(c, video, sourceSize(), { ...style, motionBlur: false }, zooms, time, previewCamera(), texts, masks);
+  const blob = await new Promise<Blob | null>((done) => out.toBlob(done, "image/png"));
+  if (!blob) return notify(t("msg.stillFailed"));
+  const name = stillFileName(time);
+  download(blob, name);
+  notify(t("msg.stillSaved", { w: size.width, h: size.height, name }));
+}
 
 async function exportGifPath(stamp: string) {
   if (!sourceBlob) return;
