@@ -2,6 +2,12 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-12 09:00 JST — blur boxes for part of the clip
+- Each blur box row has *Whole clip / Part of the clip*; *Part* starts a 3 s span at the playhead, and *From* / *To* move either end to the playhead (`timeMask`, `setMaskEdge`, `maskShown` in `masks.ts`, pure and tested). Off boxes show faintly in the preview and stay draggable. Saved with the project; a broken span falls back to the whole clip (hiding more, never less). Part of undo; English / Japanese labels.
+- Fix: the blur box row was wider than the inspector and pushed it sideways; it now wraps.
+- Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip, solid box shown 1–4 s → preview and 1080p60 MP4 (480 frames) show it at 2 s / 3.9 s and not at 0.5 s / 5 s; undo / redo, reload → Resume keep the span; no page errors. Tests: 184 passing.
+- Next: cursor highlight.
+
 ## 2026-11-11 22:00 JST — blur boxes
 - *Blur → Add blur box* hides emails, names or keys for the whole clip: drag the box on the preview, drag its bottom-right handle to resize, pick *Pixelate* or *Solid*. Boxes live in source-video coordinates (`masks.ts`, pure and tested), so they stick to the same spot through zooms; pixel blocks are sized on the unzoomed frame so zooming never reveals more detail.
 - Drawn inside `drawFrame` (every export, the worker too); the dashed outline and handle are preview-only. Saved with the project (older projects get none), part of undo, English / Japanese labels, counted in the resume summary.
