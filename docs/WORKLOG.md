@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-13 09:00 JST — save a frame as PNG
+- *Export → Save frame as PNG* (or <kbd>P</kbd>) draws the frame under the playhead at the export size with the same `drawFrame` as the video (backdrop, zoom, camera bubble, text, blur boxes; no preview outlines, no motion blur) and downloads it as `panreel-frame-0m02.0s.png` (`stillFileName` in `still.ts`, pure and tested). Added to the shortcut sheet; English / Japanese.
+- Checked in headless Chromium (`en-US` button, `ja-JP` P key): sample clip at 2 s → 1920 × 1080 PNG with the open share menu, toast in each language; no page errors. Tests: 202 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-12 22:00 JST — motion blur on zooms
 - *Frame → Motion blur on zooms* (on by default): while a zoom eases in or out, each frame averages up to 12 views of the picture over a 14 ms shutter, one per ~3 output pixels of movement, so zooms look like a smooth camera move instead of a slide. Still frames are drawn once, as before. `blurWindows` / `windowMovePx` in `motionBlur.ts` (pure, tested); `drawFrame` composites the views at 1/(k+1) alpha. Blur boxes cover the spot in every view, so a smeared copy of hidden text never shows. Saved with the project (older projects get it on); English / Japanese.
 - Checked in headless Chromium (sample clip + Auto zoom): preview edge energy during ramps drops to 0.28–0.76 of the sharp frame, identical when still; 1080p60 MP4 (480 frames) blurred in page export (`en-US`) and `?export=worker`, sharp with it off (`ja-JP`, worker); reload → Resume keeps the setting; no page errors. Tests: 199 passing.

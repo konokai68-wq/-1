@@ -21,6 +21,7 @@ Everything runs locally; no server, no account.
 - [ ] Faster export: render in a worker (OffscreenCanvas) — built as opt-in `?export=worker` (`exportWorker.ts`); keeps the page responsive but was ~2× slower in headless Chromium, so it needs a check on real GPUs before it becomes the default
 - [x] Time left shown in export and auto-zoom progress (`eta.ts`)
 - [x] GIF export for short clips (≤ 30 s, 480p, 15 fps; WebCodecs decode with a <video>-seeking fallback)
+- [x] Save the frame under the playhead as a PNG at the export size (button and <kbd>P</kbd>; thumbnails) (`still.ts`)
 - [x] Export resolution (720p / 1080p / 1440p / 4K) and frame-rate (30 / 60 fps) options
 - [x] Undo / redo (zooms, trim, frame sliders); keyboard shortcuts with a `?` help sheet
 

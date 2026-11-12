@@ -30,6 +30,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Blur sensitive details**: press *Add blur box*, drag it over an email, name or API key on the preview and drag its corner to resize. Pick *Pixelate* or *Solid* — or *Spotlight* to dim everything around the box and point viewers at it — and *Whole clip* or *Part of the clip* (set *From* / *To* at the playhead); the box stays on the same spot of the screen through zooms and covers it in every export
 - **Export** to MP4 (H.264) or WebM with WebCodecs: every frame is decoded, styled and re-encoded directly, so the result is frame-accurate and you don't have to watch it play. MP4 is used when your browser can encode H.264 (and AAC for the soundtrack); otherwise Panreel picks WebM so the audio is never dropped. Browsers without WebCodecs fall back to real-time WebM recording
 - **GIF export** for short clips (up to 30 s): 480p, 15 fps, loops forever — ready to drop into a README, pull request or chat
+- **Save a frame as PNG**: press *Save frame as PNG* (or <kbd>P</kbd>) to save the frame under the playhead at the export size, styled like the video — a ready-made thumbnail for YouTube, a README or a blog post
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser, and long exports show how much time is left
 - **Webcam bubble**: tick *Record my camera with the screen* to record your face alongside, or add an existing camera clip to any video. Choose a circle or rounded square, size, corner (or drag it on the preview) and mirroring — it's kept separate until export, so you can restyle it any time
 - **Never lose an edit**: the project (videos, camera clip, backdrop image and every edit) is saved in this browser as you work. Reload or come back later and press *Resume last project* — or *Discard* to start clean. It stays on your device
@@ -49,6 +50,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 | <kbd>S</kbd> | Speed up 2 s at the playhead |
 | <kbd>T</kbd> | Add text at the playhead |
 | <kbd>A</kbd> | Arrow on / off for the text at the playhead (adds text if there is none) |
+| <kbd>P</kbd> | Save the frame at the playhead as a PNG |
 | <kbd>Delete</kbd> | Remove the cut, speed-up, text or zoom at the playhead |
 | <kbd>Ctrl/⌘ Z</kbd> · <kbd>Ctrl/⌘ Shift Z</kbd> | Undo · Redo |
 | <kbd>?</kbd> | Show all shortcuts |
