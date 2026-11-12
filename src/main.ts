@@ -24,6 +24,7 @@ import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShap
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
 import { MASK_LOOKS, MAX_MASKS, addMask, handleSize, maskHit, maskRect, maskShown, moveMask, resizeMask, setMaskEdge, timeMask, toSource, untimeMask, type Mask, type MaskLook } from "./masks";
+import { LOOKS_KEY, MAX_LOOKS, addLook, lookSwatch, removeLook, sameStyle, sanitizeLooks, type Look } from "./looks";
 import { editSummary, sanitizeProject, timeAgo, type ProjectData, type SavedBackdrop } from "./project";
 import { clearProject, loadProject, saveMedia, saveMeta, type SavedProject } from "./projectStore";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
@@ -395,6 +396,135 @@ for (const key of ["padding", "radius", "shadow"] as const) {
   });
 }
 
+// ---- Looks (saved styling presets) --------------------------------------------
+
+const lookList = $("lookList");
+const lookNote = $("lookNote");
+const saveLookBtn = $<HTMLButtonElement>("saveLook");
+const LOOK_FRAME_DEFAULTS = { padding: style.padding, radius: style.radius, shadow: style.shadow };
+
+function readLooks(): Look[] {
+  try {
+    return sanitizeLooks(JSON.parse(localStorage.getItem(LOOKS_KEY) ?? "null"), LOOK_FRAME_DEFAULTS);
+  } catch {
+    return [];
+  }
+}
+let looks = readLooks();
+
+function storeLooks(): boolean {
+  try {
+    localStorage.setItem(LOOKS_KEY, JSON.stringify(looks));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The current styling, in the shape a look stores. */
+function currentLook(): Omit<Look, "id" | "name"> {
+  const b = style.backdrop;
+  return {
+    aspect: aspectSelect.value,
+    frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
+    chrome: style.chrome,
+    backdrop: b.kind === "gradient" ? { kind: "gradient", id: b.id } : b.kind === "solid" ? { kind: "solid", color: b.color } : null,
+  };
+}
+
+/** A look made on an image backdrop matches whatever backdrop is active, since applying it keeps that backdrop. */
+function looksActive(l: Look): boolean {
+  const now = currentLook();
+  return sameStyle(l.backdrop ? l : { ...l, backdrop: now.backdrop }, now);
+}
+
+function markActiveLooks() {
+  lookList.querySelectorAll<HTMLElement>(".look").forEach((el) => {
+    const l = looks.find((x) => x.id === el.dataset.id);
+    el.dataset.active = String(!!l && looksActive(l));
+  });
+}
+
+function renderLooks() {
+  lookList.replaceChildren(
+    ...looks.map((l) => {
+      const li = document.createElement("li");
+      li.className = "look";
+      li.dataset.id = l.id;
+      const use = document.createElement("button");
+      use.type = "button";
+      use.className = "look-use";
+      use.title = t("looks.apply", { name: l.name });
+      const chip = document.createElement("span");
+      chip.className = "look-chip";
+      chip.style.background = lookSwatch(l, BACKDROPS);
+      chip.setAttribute("aria-hidden", "true");
+      use.append(chip, l.name);
+      use.addEventListener("click", () => applyLook(l));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "look-del";
+      del.textContent = "✕";
+      del.title = t("looks.remove", { name: l.name });
+      del.setAttribute("aria-label", del.title);
+      del.addEventListener("click", () => {
+        looks = removeLook(looks, l.id);
+        if (!storeLooks()) notify(t("msg.lookStoreFailed"));
+        renderLooks();
+      });
+      li.append(use, del);
+      return li;
+    }),
+  );
+  const full = looks.length >= MAX_LOOKS;
+  saveLookBtn.disabled = full;
+  lookNote.hidden = looks.length > 0 && !full;
+  lookNote.textContent = full ? t("looks.full", { n: MAX_LOOKS }) : t("looks.empty");
+  markActiveLooks();
+}
+
+function applyLook(l: Look) {
+  checkpoint();
+  const a = ASPECTS.find((x) => x.id === l.aspect);
+  if (a && aspectSelect.value !== a.id) {
+    aspectSelect.value = a.id;
+    canvas.width = a.size.width;
+    canvas.height = a.size.height;
+    updateExportInfo();
+  }
+  const b = l.backdrop;
+  if (b?.kind === "solid") {
+    solidColor.value = b.color;
+    setBackdrop({ kind: "solid", color: b.color }, solidPick);
+  } else if (b?.kind === "gradient") {
+    const i = BACKDROPS.findIndex((g) => g.id === b.id);
+    if (i >= 0) setBackdrop(BACKDROPS[i], swatches.querySelectorAll(".swatch")[i]);
+  }
+  applyChrome(l.chrome);
+  for (const key of FRAME_KEYS) {
+    style[key] = l.frame[key];
+    $<HTMLInputElement>(key).value = String(l.frame[key]);
+  }
+  markActiveLooks();
+  notify(t("msg.lookApplied", { name: l.name }));
+}
+
+const newLookId = () => (crypto.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`).slice(0, 40);
+
+saveLookBtn.addEventListener("click", () => {
+  const r = addLook(looks, currentLook(), newLookId(), t("looks.word"));
+  if (r.existing) return notify(t("msg.lookExists", { name: r.existing.name }));
+  if (!r.added) return renderLooks();
+  looks = r.looks;
+  renderLooks();
+  notify(t(storeLooks() ? "msg.lookSaved" : "msg.lookStoreFailed", { name: r.added.name }));
+});
+
+// Any styling control can make a different look the active one.
+const inspectorEl = document.querySelector<HTMLElement>(".inspector")!;
+for (const type of ["input", "change", "click"]) inspectorEl.addEventListener(type, () => queueMicrotask(markActiveLooks));
+renderLooks();
+
 // ---- Undo / redo -------------------------------------------------------------
 
 const FRAME_KEYS = ["padding", "radius", "shadow"] as const;
@@ -449,6 +579,7 @@ function restore(s: EditState) {
   renderTextUi();
   renderMaskUi();
   syncHistoryUi();
+  markActiveLooks();
 }
 
 function undo() {
@@ -1866,6 +1997,7 @@ onLangChange((l) => {
   updateExportInfo();
   syncTransport();
   renderResumeInfo();
+  renderLooks();
   if (hasVideo) {
     renderZoomUi();
     renderCutUi();

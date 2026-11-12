@@ -198,6 +198,22 @@ legend { font-weight: 700; font-size: 0.875rem; margin-bottom: 8px; padding: 0; 
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12);
 }
 .swatch[aria-checked="true"] { border-color: var(--ink); }
+.looks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.looks:empty { display: none; }
+.look { display: flex; align-items: stretch; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line); }
+.look[data-active="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+.look-use {
+  display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 4px; border: 0; background: none;
+  font: inherit; font-size: 0.8125rem; color: var(--ink); cursor: pointer; border-radius: 6px 0 0 6px;
+}
+.look-chip { width: 22px; height: 16px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); flex: none; }
+.look-use:hover .look-chip { transform: scale(1.08); }
+.look-del {
+  border: 0; background: none; padding: 0 7px 0 2px; color: var(--ink-soft); cursor: pointer; font-size: 0.875rem;
+  border-radius: 0 6px 6px 0;
+}
+.look-del:hover { color: var(--ink); }
+.look-use:focus-visible, .look-del:focus-visible { outline: 2px solid var(--cue); outline-offset: 1px; }
 .backdrop-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
 .custom-pick {
   display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; cursor: pointer;
