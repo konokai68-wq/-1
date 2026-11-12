@@ -26,7 +26,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Speed up** slow stretches (installs, loading, typing): press *Speed up* (or <kbd>S</kbd>), pick 2×, 4× or 8× and drag the teal bar's ends. Sped-up parts play fast and silent in the preview and in every export
 - **Text callouts**: press *Add text* (or <kbd>T</kbd>), type a caption, pick Dark / Light / Blue and S / M / L, drag it anywhere on the preview, and drag the violet bar's ends to set when it shows. Callouts fade in and out and are drawn into every export
 - **Arrows**: press *Arrow* on a callout (or <kbd>A</kbd>) to point at something, then drag the arrow's tip on the preview. Clear the text for a bare arrow
-- **Blur sensitive details**: press *Add blur box*, drag it over an email, name or API key on the preview and drag its corner to resize. Pick *Pixelate* or *Solid*, and *Whole clip* or *Part of the clip* (set *From* / *To* at the playhead); the box stays on the same spot of the screen through zooms and covers it in every export
+- **Blur sensitive details**: press *Add blur box*, drag it over an email, name or API key on the preview and drag its corner to resize. Pick *Pixelate* or *Solid* — or *Spotlight* to dim everything around the box and point viewers at it — and *Whole clip* or *Part of the clip* (set *From* / *To* at the playhead); the box stays on the same spot of the screen through zooms and covers it in every export
 - **Export** to MP4 (H.264) or WebM with WebCodecs: every frame is decoded, styled and re-encoded directly, so the result is frame-accurate and you don't have to watch it play. MP4 is used when your browser can encode H.264 (and AAC for the soundtrack); otherwise Panreel picks WebM so the audio is never dropped. Browsers without WebCodecs fall back to real-time WebM recording
 - **GIF export** for short clips (up to 30 s): 480p, 15 fps, loops forever — ready to drop into a README, pull request or chat
 - **Export settings**: pick 720p, 1080p, 1440p or 4K and 30 or 60 fps (30 fps exports about twice as fast). Your choice is remembered in this browser, and long exports show how much time is left
@@ -73,7 +73,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer, and 
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a cursor highlight and a faster export in a worker.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: saved look presets, a cursor highlight and a faster export in a worker.
 
 Shared links to the hosted site show a preview card (`public/social-preview.png`). The Open Graph / Twitter tags are added at build time; in GitHub Actions the image URL is worked out from the repository name, so the card keeps working after a rename.
 

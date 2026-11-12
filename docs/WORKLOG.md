@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-12 13:00 JST — spotlight
+- Blur boxes get a third style, *Spotlight* / 「スポットライト」: the recording around the box dims (55 %) and the box stays lit with soft corners. Several spotlights light up together; spotlights are drawn first (`drawOrder` in `masks.ts`, tested), so a Pixelate / Solid box inside one still hides. Works with *Part of the clip*, saved with the project, part of undo.
+- Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip, one spotlight + one solid box → preview lit inside (761) vs dimmed outside (69), 1080p60 MP4 (480 frames) shows both and no outlines; undo / redo switch the style; no page errors. Tests: 185 passing.
+- Next: look presets, or cursor highlight.
+
 ## 2026-11-12 09:00 JST — blur boxes for part of the clip
 - Each blur box row has *Whole clip / Part of the clip*; *Part* starts a 3 s span at the playhead, and *From* / *To* move either end to the playhead (`timeMask`, `setMaskEdge`, `maskShown` in `masks.ts`, pure and tested). Off boxes show faintly in the preview and stay draggable. Saved with the project; a broken span falls back to the whole clip (hiding more, never less). Part of undo; English / Japanese labels.
 - Fix: the blur box row was wider than the inspector and pushed it sideways; it now wraps.
