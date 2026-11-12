@@ -23,7 +23,7 @@ import {
 import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShape, type Corner } from "./camera";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
-import { MAX_MASKS, addMask, handleSize, maskHit, maskRect, maskShown, moveMask, resizeMask, setMaskEdge, timeMask, toSource, untimeMask, type Mask, type MaskLook } from "./masks";
+import { MASK_LOOKS, MAX_MASKS, addMask, handleSize, maskHit, maskRect, maskShown, moveMask, resizeMask, setMaskEdge, timeMask, toSource, untimeMask, type Mask, type MaskLook } from "./masks";
 import { editSummary, sanitizeProject, timeAgo, type ProjectData, type SavedBackdrop } from "./project";
 import { clearProject, loadProject, saveMedia, saveMeta, type SavedProject } from "./projectStore";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
@@ -1430,7 +1430,7 @@ function renderMaskUi() {
       name.textContent = t("mask.row", { n: i + 1 });
       const look = document.createElement("select");
       look.setAttribute("aria-label", t("mask.look"));
-      for (const id of ["pixel", "solid"] as const) look.add(new Option(t(id === "pixel" ? "mask.pixel" : "mask.solid"), id));
+      for (const id of MASK_LOOKS) look.add(new Option(t(`mask.${id}`), id));
       look.value = m.look;
       look.addEventListener("change", () => {
         checkpoint();

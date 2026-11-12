@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_MASKS, MIN_MASK, MIN_MASK_TIME, addMask, maskShown, setMaskEdge, timeMask, untimeMask, clampMask, maskHit, maskRect, moveMask, pixelBlock, resizeMask, toSource, type Mask } from "./masks";
+import { MAX_MASKS, MIN_MASK, MIN_MASK_TIME, addMask, drawOrder, maskShown, setMaskEdge, timeMask, untimeMask, clampMask, maskHit, maskRect, moveMask, pixelBlock, resizeMask, toSource, type Mask } from "./masks";
 
 const box: Mask = { x: 0.1, y: 0.2, width: 0.3, height: 0.1, look: "pixel" };
 const source = { width: 1920, height: 1080 };
@@ -118,5 +118,15 @@ describe("timed boxes", () => {
     expect(setMaskEdge(timed, "end", 0, 10).time?.end).toBeCloseTo(2 + MIN_MASK_TIME);
     expect(setMaskEdge(timed, "end", 20, 10).time?.end).toBe(10);
     expect(setMaskEdge(box, "end", 3, 10)).toBe(box);
+  });
+});
+
+describe("drawOrder", () => {
+  it("puts spotlights first and keeps hiding boxes after them, in order", () => {
+    const a: Mask = { ...box, look: "solid" };
+    const b: Mask = { ...box, look: "spotlight", x: 0.5 };
+    const c: Mask = { ...box, look: "pixel", y: 0.6 };
+    expect(drawOrder([a, b, c])).toEqual({ spots: [b], hides: [a, c] });
+    expect(drawOrder([])).toEqual({ spots: [], hides: [] });
   });
 });

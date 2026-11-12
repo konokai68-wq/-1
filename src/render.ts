@@ -1,6 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, sourceWindow, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
-import { maskRect, maskShown, pixelBlock, type Mask } from "./masks";
+import { SPOTLIGHT_DIM, drawOrder, maskRect, maskShown, pixelBlock, type Mask } from "./masks";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
 /** 2D context of an on-page canvas or of an OffscreenCanvas (export worker). */
@@ -126,14 +126,33 @@ function scratchCanvas(w: number, h: number): OffscreenCanvas | HTMLCanvasElemen
   return scratch;
 }
 
-/** Hide each blur box: big pixel blocks of what is underneath, or a flat dark fill. */
+/**
+ * Spotlights dim the whole recording, then draw the frame again inside each
+ * spotlight box. Then each blur box hides what is underneath: big pixel
+ * blocks, or a flat dark fill.
+ */
 function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, win: Rect, content: Rect, masks: readonly Mask[]): void {
   const block = pixelBlock(ctx.canvas);
+  const { spots, hides } = drawOrder(masks);
   ctx.save();
   ctx.beginPath();
   ctx.rect(content.x, content.y, content.width, content.height);
   ctx.clip();
-  for (const m of masks) {
+  if (spots.length) {
+    ctx.fillStyle = `rgba(6, 8, 12, ${SPOTLIGHT_DIM})`;
+    ctx.fillRect(content.x, content.y, content.width, content.height);
+    ctx.save();
+    ctx.beginPath();
+    for (const m of spots) {
+      const r = maskRect(m, sourceSize, win, content);
+      const radius = Math.min(r.width, r.height) * 0.12;
+      addRoundRect(ctx, r.x, r.y, r.width, r.height, radius);
+    }
+    ctx.clip();
+    ctx.drawImage(source, win.x, win.y, win.width, win.height, content.x, content.y, content.width, content.height);
+    ctx.restore();
+  }
+  for (const m of hides) {
     const r = maskRect(m, sourceSize, win, content);
     if (m.look === "solid") {
       ctx.fillStyle = "#15171c";
@@ -329,8 +348,13 @@ function paintBackdrop(ctx: Ctx2D, b: Backdrop, w: number, h: number): void {
 }
 
 function roundRect(ctx: Ctx2D, x: number, y: number, w: number, h: number, r: number): void {
-  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
+  addRoundRect(ctx, x, y, w, h, r);
+}
+
+/** Add a rounded rectangle to the current path (all drawn the same way round, so several make a union). */
+function addRoundRect(ctx: Ctx2D, x: number, y: number, w: number, h: number, r: number): void {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.moveTo(x + rr, y);
   ctx.arcTo(x + w, y, x + w, y + h, rr);
   ctx.arcTo(x + w, y + h, x, y + h, rr);

@@ -1,13 +1,25 @@
 /**
  * Blur boxes: rectangles that hide sensitive parts of the recording (emails,
- * names, keys) for the whole clip or for part of it. A box is stored in the source video's own
+ * names, keys) — or spotlight one part — for the whole clip or for part of it. A box is stored in the source video's own
  * coordinates (0–1 on each axis), so it stays on the same spot of the screen
  * while the camera zooms, and it covers the same pixels in every export.
  */
 import { clamp, type Rect, type Size } from "./layout";
 
-export type MaskLook = "pixel" | "solid";
-export const MASK_LOOKS: readonly MaskLook[] = ["pixel", "solid"];
+/**
+ * "pixel" and "solid" hide what is inside the box; "spotlight" does the
+ * opposite and dims everything around it, to point the viewer at one spot.
+ */
+export type MaskLook = "pixel" | "solid" | "spotlight";
+export const MASK_LOOKS: readonly MaskLook[] = ["pixel", "solid", "spotlight"];
+
+/** How dark the area around a spotlight gets (0 = untouched, 1 = black). */
+export const SPOTLIGHT_DIM = 0.55;
+
+/** Spotlights first (they dim and re-light the frame), then the boxes that hide, so a hidden spot stays hidden inside a spotlight. */
+export function drawOrder(masks: readonly Mask[]): { spots: Mask[]; hides: Mask[] } {
+  return { spots: masks.filter((m) => m.look === "spotlight"), hides: masks.filter((m) => m.look !== "spotlight") };
+}
 
 export interface Mask {
   /** Top-left corner and size as fractions of the source video. */
