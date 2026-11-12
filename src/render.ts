@@ -1,5 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, sourceWindow, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
+import { blurWindows } from "./motionBlur";
 import { SPOTLIGHT_DIM, drawOrder, maskRect, maskShown, pixelBlock, type Mask } from "./masks";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
@@ -61,6 +62,8 @@ export interface Style {
   shadow: number;
   /** Optional window title bar above the recording. */
   chrome: WindowChrome;
+  /** Smear the picture while a zoom moves, like a real camera pan. */
+  motionBlur: boolean;
 }
 
 /** A webcam picture to draw as a bubble over the frame. */
@@ -102,10 +105,15 @@ export function drawFrame(
   roundRect(ctx, frame.x, frame.y, frame.width, frame.height, r);
   ctx.clip();
   if (source && sourceSize.width > 0) {
-    const win = sourceWindow(sourceSize, cameraAt(time, zooms));
-    ctx.drawImage(source, win.x, win.y, win.width, win.height, content.x, content.y, content.width, content.height);
+    const wins = style.motionBlur ? blurWindows(sourceSize, zooms, time, content.width) : [sourceWindow(sourceSize, cameraAt(time, zooms))];
+    // Equal-weight average: view k goes on at 1/(k+1) over the views before it.
+    wins.forEach((w, k) => {
+      ctx.globalAlpha = 1 / (k + 1);
+      ctx.drawImage(source, w.x, w.y, w.width, w.height, content.x, content.y, content.width, content.height);
+    });
+    ctx.globalAlpha = 1;
     const shown = masks.filter((m) => maskShown(m, time));
-    if (shown.length) drawMasks(ctx, source, sourceSize, win, content, shown);
+    if (shown.length) drawMasks(ctx, source, sourceSize, wins, content, shown);
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(content.x, content.y, content.width, content.height);
@@ -131,7 +139,8 @@ function scratchCanvas(w: number, h: number): OffscreenCanvas | HTMLCanvasElemen
  * spotlight box. Then each blur box hides what is underneath: big pixel
  * blocks, or a flat dark fill.
  */
-function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, win: Rect, content: Rect, masks: readonly Mask[]): void {
+function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, wins: readonly Rect[], content: Rect, masks: readonly Mask[]): void {
+  const win = wins[wins.length - 1];
   const block = pixelBlock(ctx.canvas);
   const { spots, hides } = drawOrder(masks);
   ctx.save();
@@ -152,28 +161,31 @@ function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, win:
     ctx.drawImage(source, win.x, win.y, win.width, win.height, content.x, content.y, content.width, content.height);
     ctx.restore();
   }
-  for (const m of hides) {
-    const r = maskRect(m, sourceSize, win, content);
-    if (m.look === "solid") {
-      ctx.fillStyle = "#15171c";
-      ctx.fillRect(r.x, r.y, r.width, r.height);
-      continue;
-    }
-    // Blocks are sized on the unzoomed frame, so zooming in makes them bigger, never more detailed.
-    const cols = Math.max(1, Math.ceil((m.width * content.width) / block));
-    const rows = Math.max(1, Math.ceil((m.height * content.height) / block));
-    const tiny = scratchCanvas(cols, rows);
-    const tctx = tiny.getContext("2d") as Ctx2D | null;
-    if (!tctx) continue;
-    tctx.imageSmoothingEnabled = true;
-    tctx.imageSmoothingQuality = "high";
-    tctx.clearRect(0, 0, cols, rows);
-    tctx.drawImage(source, m.x * sourceSize.width, m.y * sourceSize.height, m.width * sourceSize.width, m.height * sourceSize.height, 0, 0, cols, rows);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(tiny, 0, 0, cols, rows, r.x, r.y, r.width, r.height);
-    ctx.imageSmoothingEnabled = true;
-  }
+  // With motion blur the hidden spot is smeared across every view, so cover it in each one.
+  for (const m of hides) hideBox(ctx, source, sourceSize, wins, content, m, block);
   ctx.restore();
+}
+
+function hideBox(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, wins: readonly Rect[], content: Rect, m: Mask, block: number): void {
+  const rects = wins.map((w) => maskRect(m, sourceSize, w, content));
+  if (m.look === "solid") {
+    ctx.fillStyle = "#15171c";
+    for (const r of rects) ctx.fillRect(r.x, r.y, r.width, r.height);
+    return;
+  }
+  // Blocks are sized on the unzoomed frame, so zooming in makes them bigger, never more detailed.
+  const cols = Math.max(1, Math.ceil((m.width * content.width) / block));
+  const rows = Math.max(1, Math.ceil((m.height * content.height) / block));
+  const tiny = scratchCanvas(cols, rows);
+  const tctx = tiny.getContext("2d") as Ctx2D | null;
+  if (!tctx) return;
+  tctx.imageSmoothingEnabled = true;
+  tctx.imageSmoothingQuality = "high";
+  tctx.clearRect(0, 0, cols, rows);
+  tctx.drawImage(source, m.x * sourceSize.width, m.y * sourceSize.height, m.width * sourceSize.width, m.height * sourceSize.height, 0, 0, cols, rows);
+  ctx.imageSmoothingEnabled = false;
+  for (const r of rects) ctx.drawImage(tiny, 0, 0, cols, rows, r.x, r.y, r.width, r.height);
+  ctx.imageSmoothingEnabled = true;
 }
 
 const CHROME_COLORS = {

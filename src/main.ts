@@ -124,7 +124,7 @@ const resumeBtn = $<HTMLButtonElement>("resumeBtn");
 const discardBtn = $<HTMLButtonElement>("discardBtn");
 const resumeInfo = $("resumeInfo");
 
-const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none" };
+const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true };
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
@@ -385,6 +385,15 @@ for (const c of WINDOW_CHROMES) {
 function applyChrome(c: WindowChrome) {
   style.chrome = c;
   windowGroup.querySelectorAll<HTMLInputElement>("input").forEach((i) => (i.checked = i.value === c));
+}
+
+const motionBlurInput = $<HTMLInputElement>("motionBlur");
+motionBlurInput.checked = style.motionBlur;
+motionBlurInput.addEventListener("change", () => (style.motionBlur = motionBlurInput.checked));
+
+function applyMotionBlur(on: boolean) {
+  style.motionBlur = on;
+  motionBlurInput.checked = on;
 }
 
 for (const key of ["padding", "radius", "shadow"] as const) {
@@ -1840,6 +1849,7 @@ function projectData(): ProjectData {
     aspect: aspectSelect.value,
     frame: s.frame,
     chrome: style.chrome,
+    motionBlur: style.motionBlur,
     backdrop: savedBackdrop(),
     bubble: { ...bubble },
     zooms: s.zooms,
@@ -1924,6 +1934,7 @@ async function resume() {
   await applyBackdrop(p.backdrop, saved.media.backdrop);
   applyBubble(p.bubble);
   applyChrome(p.chrome);
+  applyMotionBlur(p.motionBlur);
   restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame });
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;

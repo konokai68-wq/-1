@@ -20,6 +20,8 @@ export interface ProjectData {
   frame: { padding: number; radius: number; shadow: number };
   /** Window title bar; missing in projects saved before it existed. */
   chrome: WindowChrome;
+  /** Motion blur on zooms; on when missing (projects saved before it existed). */
+  motionBlur: boolean;
   backdrop: SavedBackdrop;
   bubble: Bubble;
   zooms: ZoomSegment[];
@@ -85,6 +87,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
   };
 
   const chrome = WINDOW_CHROMES.includes(raw.chrome as WindowChrome) ? (raw.chrome as WindowChrome) : "none";
+  const motionBlur = typeof raw.motionBlur === "boolean" ? raw.motionBlur : true;
 
   const b = isObj(raw.backdrop) ? raw.backdrop : {};
   let backdrop: SavedBackdrop = { kind: "gradient", id: "" };
@@ -138,7 +141,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
     return time ? { ...box, time } : box;
   }).slice(0, MAX_MASKS);
 
-  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
+  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, motionBlur, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
 }
 
 /** "3 zooms · 1 cut · 2 texts · 1 blur box", or "" when nothing has been added yet. */

@@ -11,6 +11,7 @@ const good: ProjectData = {
   aspect: "1:1",
   frame: { padding: 0.1, radius: 0.03, shadow: 0.5 },
   chrome: "dark",
+  motionBlur: false,
   backdrop: { kind: "solid", color: "#112233" },
   bubble: { visible: false, shape: "rounded", size: 0.3, corner: "tl", mirror: false },
   zooms: [{ start: 1, end: 3, scale: 1.8, focusX: 0.2, focusY: 0.7 }],
@@ -24,6 +25,13 @@ const good: ProjectData = {
 describe("sanitizeProject", () => {
   it("keeps a valid project as it is", () => {
     expect(sanitizeProject(JSON.parse(JSON.stringify(good)), defaults)).toEqual(good);
+  });
+
+  it("keeps motion blur, and turns it on for older or broken projects", () => {
+    expect(sanitizeProject(good, defaults)?.motionBlur).toBe(false);
+    const { motionBlur: _, ...old } = good;
+    expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.motionBlur).toBe(true);
+    expect(sanitizeProject({ ...good, motionBlur: "yes" }, defaults)?.motionBlur).toBe(true);
   });
 
   it("defaults the window chrome for older or broken projects", () => {
