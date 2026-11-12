@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_MASKS, MIN_MASK, addMask, clampMask, maskHit, maskRect, moveMask, pixelBlock, resizeMask, toSource, type Mask } from "./masks";
+import { MAX_MASKS, MIN_MASK, MIN_MASK_TIME, addMask, maskShown, setMaskEdge, timeMask, untimeMask, clampMask, maskHit, maskRect, moveMask, pixelBlock, resizeMask, toSource, type Mask } from "./masks";
 
 const box: Mask = { x: 0.1, y: 0.2, width: 0.3, height: 0.1, look: "pixel" };
 const source = { width: 1920, height: 1080 };
@@ -90,5 +90,33 @@ describe("pixelBlock", () => {
   it("scales with the canvas", () => {
     expect(pixelBlock({ width: 1920, height: 1080 })).toBe(24);
     expect(pixelBlock({ width: 100, height: 100 })).toBe(6);
+  });
+});
+
+describe("timed boxes", () => {
+  it("shows untimed boxes all the time and timed ones only inside their span", () => {
+    expect(maskShown(box, 0)).toBe(true);
+    const timed = timeMask(box, 2, 10);
+    expect(timed.time).toEqual({ start: 2, end: 5 });
+    expect(maskShown(timed, 1.99)).toBe(false);
+    expect(maskShown(timed, 2)).toBe(true);
+    expect(maskShown(timed, 4.99)).toBe(true);
+    expect(maskShown(timed, 5)).toBe(false);
+    expect(untimeMask(timed)).toEqual(box);
+  });
+
+  it("moves the span back near the end and fits short clips", () => {
+    expect(timeMask(box, 9, 10).time).toEqual({ start: 7, end: 10 });
+    expect(timeMask(box, 1, 2).time).toEqual({ start: 0, end: 2 });
+  });
+
+  it("sets either edge to the playhead with a minimum length", () => {
+    const timed = timeMask(box, 2, 10);
+    expect(setMaskEdge(timed, "start", 1, 10).time).toEqual({ start: 1, end: 5 });
+    expect(setMaskEdge(timed, "start", 6, 10).time?.start).toBeCloseTo(5 - MIN_MASK_TIME);
+    expect(setMaskEdge(timed, "end", 8, 10).time).toEqual({ start: 2, end: 8 });
+    expect(setMaskEdge(timed, "end", 0, 10).time?.end).toBeCloseTo(2 + MIN_MASK_TIME);
+    expect(setMaskEdge(timed, "end", 20, 10).time?.end).toBe(10);
+    expect(setMaskEdge(box, "end", 3, 10)).toBe(box);
   });
 });

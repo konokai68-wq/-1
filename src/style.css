@@ -346,7 +346,10 @@ label.link-btn { cursor: pointer; }
 #canvas.over-mask { cursor: move; }
 #canvas.over-mask-corner { cursor: nwse-resize; }
 #canvas.moving-mask { cursor: grabbing; }
-.mask-list li { border-left: 3px solid var(--ink-soft); }
+.mask-list li { display: flex; flex-wrap: wrap; border-left: 3px solid var(--ink-soft); }
+/* Name, style and timing wrap in the narrow inspector; Remove stays on the right. */
+.mask-list li > span { flex: 1 0 auto; }
+.mask-list li > button:last-child { margin-left: auto; }
 .auto-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .auto-zoom .btn { flex: none; }
 .auto-zoom .note { margin: 0; }

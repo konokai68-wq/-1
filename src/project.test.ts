@@ -93,6 +93,10 @@ describe("sanitizeProject", () => {
     expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.masks).toEqual([]);
     const p = sanitizeProject({ ...good, masks: [{ x: 0.9, y: 0, width: 0.3, height: 0.1, look: "neon" }, { x: "a" }, null] }, defaults)!;
     expect(p.masks).toEqual([{ x: 0.7, y: 0, width: 0.3, height: 0.1, look: "pixel" }]);
+    const timed = sanitizeProject({ ...good, masks: [{ ...good.masks[0], time: { start: 1, end: 99 } }, { ...good.masks[0], time: { start: 3, end: 1 } }] }, defaults)!;
+    expect(timed.masks[0].time).toEqual({ start: 1, end: good.duration });
+    // A broken time falls back to the whole clip, so the box still hides its spot.
+    expect(timed.masks[1].time).toBeUndefined();
   });
 });
 

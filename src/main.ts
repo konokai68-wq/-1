@@ -23,7 +23,7 @@ import {
 import { DEFAULT_BUBBLE, bubbleRect, nearestCorner, type Bubble, type BubbleShape, type Corner } from "./camera";
 import { fullTrim, isFullTrim, playStart, setTrimEdge, type Edge, type Trim } from "./trim";
 import { History } from "./history";
-import { MAX_MASKS, addMask, handleSize, maskHit, maskRect, moveMask, resizeMask, toSource, type Mask, type MaskLook } from "./masks";
+import { MAX_MASKS, addMask, handleSize, maskHit, maskRect, maskShown, moveMask, resizeMask, setMaskEdge, timeMask, toSource, untimeMask, type Mask, type MaskLook } from "./masks";
 import { editSummary, sanitizeProject, timeAgo, type ProjectData, type SavedBackdrop } from "./project";
 import { clearProject, loadProject, saveMedia, saveMeta, type SavedProject } from "./projectStore";
 import { SHORTCUTS, actionFor, type Action } from "./shortcuts";
@@ -184,6 +184,8 @@ function drawMaskOutlines() {
   ctx.save();
   rects.forEach((r, i) => {
     const on = maskDrag?.index === i;
+    // Boxes that are off at this moment stay draggable but show faintly.
+    ctx.globalAlpha = on || maskShown(masks[i], video.currentTime) ? 1 : 0.4;
     ctx.lineWidth = lw;
     ctx.setLineDash([lw * 4, lw * 3]);
     ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
@@ -1434,6 +1436,31 @@ function renderMaskUi() {
         checkpoint();
         masks[i] = { ...masks[i], look: look.value as MaskLook };
       });
+      const when = document.createElement("select");
+      when.setAttribute("aria-label", t("mask.when"));
+      when.add(new Option(t("mask.whole"), "whole", false, !m.time));
+      when.add(new Option(t("mask.part"), "part", false, !!m.time));
+      when.addEventListener("change", () => {
+        checkpoint();
+        masks[i] = when.value === "part" ? timeMask(masks[i], video.currentTime, video.duration) : untimeMask(masks[i]);
+        renderMaskUi();
+      });
+      const edges: HTMLButtonElement[] = [];
+      if (m.time) {
+        for (const edge of ["start", "end"] as const) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "text-time";
+          b.textContent = t(edge === "start" ? "mask.from" : "mask.to", { t: formatTimeFine(m.time[edge]) });
+          b.title = t("mask.edgeTip");
+          b.addEventListener("click", () => {
+            checkpoint();
+            masks[i] = setMaskEdge(masks[i], edge, video.currentTime, video.duration);
+            renderMaskUi();
+          });
+          edges.push(b);
+        }
+      }
       const del = document.createElement("button");
       del.type = "button";
       del.textContent = t("row.remove");
@@ -1443,7 +1470,7 @@ function renderMaskUi() {
         renderMaskUi();
         notify(t("msg.maskRemoved"));
       });
-      li.append(name, look, del);
+      li.append(name, look, when, ...edges, del);
       return li;
     }),
   );

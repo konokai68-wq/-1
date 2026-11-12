@@ -1,6 +1,6 @@
 /**
  * Blur boxes: rectangles that hide sensitive parts of the recording (emails,
- * names, keys) for the whole clip. A box is stored in the source video's own
+ * names, keys) for the whole clip or for part of it. A box is stored in the source video's own
  * coordinates (0–1 on each axis), so it stays on the same spot of the screen
  * while the camera zooms, and it covers the same pixels in every export.
  */
@@ -16,7 +16,13 @@ export interface Mask {
   width: number;
   height: number;
   look: MaskLook;
+  /** When the box is shown, in source-video seconds; no `time` means the whole clip. */
+  time?: { start: number; end: number };
 }
+
+/** Shortest time a box can be shown for, in seconds. */
+export const MIN_MASK_TIME = 0.2;
+const DEFAULT_TIME = 3;
 
 /** Smallest box side, as a fraction of the video. */
 export const MIN_MASK = 0.02;
@@ -102,4 +108,31 @@ export function maskHit(rects: readonly Rect[], x: number, y: number, handle: nu
     if (x >= r.x && x <= cx && y >= r.y && y <= cy) return { index: i, part: "body" };
   }
   return null;
+}
+
+/** Is the box drawn at this source time? */
+export function maskShown(m: Mask, time: number): boolean {
+  return !m.time || (time >= m.time.start && time < m.time.end);
+}
+
+/** Show the box only for a while, starting at the playhead (moved back if the clip ends first). */
+export function timeMask(m: Mask, at: number, duration: number): Mask {
+  const len = Math.min(DEFAULT_TIME, duration);
+  const start = clamp(at, 0, Math.max(0, duration - len));
+  return { ...m, time: { start, end: Math.min(duration, start + len) } };
+}
+
+/** Show the box for the whole clip again. */
+export function untimeMask(m: Mask): Mask {
+  const { time: _, ...rest } = m;
+  return rest;
+}
+
+/** Move one end of a timed box to the playhead, keeping it at least MIN_MASK_TIME long. */
+export function setMaskEdge(m: Mask, edge: "start" | "end", at: number, duration: number): Mask {
+  if (!m.time) return m;
+  const { start, end } = m.time;
+  const min = Math.min(MIN_MASK_TIME, duration);
+  if (edge === "start") return { ...m, time: { start: clamp(at, 0, Math.max(0, end - min)), end } };
+  return { ...m, time: { start, end: clamp(at, Math.min(duration, start + min), duration) } };
 }

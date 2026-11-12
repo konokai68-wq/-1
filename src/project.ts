@@ -133,7 +133,9 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
   const masks = list<Mask>(raw.masks, (m) => {
     if (!isObj(m) || !num(m.x) || !num(m.y) || !num(m.width) || !num(m.height)) return null;
     const look = MASK_LOOKS.includes(m.look as MaskLook) ? (m.look as MaskLook) : "pixel";
-    return clampMask({ x: m.x, y: m.y, width: m.width, height: m.height, look });
+    const box = clampMask({ x: m.x, y: m.y, width: m.width, height: m.height, look });
+    const time = m.time === undefined ? null : span(m.time, duration);
+    return time ? { ...box, time } : box;
   }).slice(0, MAX_MASKS);
 
   return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };

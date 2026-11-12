@@ -1,6 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cameraAt, coverRect, sourceWindow, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
-import { maskRect, pixelBlock, type Mask } from "./masks";
+import { maskRect, maskShown, pixelBlock, type Mask } from "./masks";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
 /** 2D context of an on-page canvas or of an OffscreenCanvas (export worker). */
@@ -104,7 +104,8 @@ export function drawFrame(
   if (source && sourceSize.width > 0) {
     const win = sourceWindow(sourceSize, cameraAt(time, zooms));
     ctx.drawImage(source, win.x, win.y, win.width, win.height, content.x, content.y, content.width, content.height);
-    if (masks.length) drawMasks(ctx, source, sourceSize, win, content, masks);
+    const shown = masks.filter((m) => maskShown(m, time));
+    if (shown.length) drawMasks(ctx, source, sourceSize, win, content, shown);
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(content.x, content.y, content.width, content.height);
