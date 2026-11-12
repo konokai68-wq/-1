@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-12 18:00 JST — look presets
+- New *Looks* box at the top of the inspector: *Save this look* keeps the backdrop (gradient or colour), canvas size, padding, corners, shadow and window bar in localStorage (`panreel.looks`, up to 8, named "Look 1", "Look 2"…); a click on a saved look applies it — before a clip is open too, so it styles the next one. The look that matches the current style is outlined; saving an identical look says which one it is. `looks.ts` (pure, tested: sanitize, compare, name, add / remove, chip colour). Applying is one undo step for the frame sliders. English / Japanese.
+- Checked in headless Chromium (`en-US`, `ja-JP`): save → duplicate message → reload → apply → load the sample clip keeps the look; edit, re-apply, Ctrl+Z; remove; no page errors. Tests: 192 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-12 13:00 JST — spotlight
 - Blur boxes get a third style, *Spotlight* / 「スポットライト」: the recording around the box dims (55 %) and the box stays lit with soft corners. Several spotlights light up together; spotlights are drawn first (`drawOrder` in `masks.ts`, tested), so a Pixelate / Solid box inside one still hides. Works with *Part of the clip*, saved with the project, part of undo.
 - Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip, one spotlight + one solid box → preview lit inside (761) vs dimmed outside (69), 1080p60 MP4 (480 frames) shows both and no outlines; undo / redo switch the style; no page errors. Tests: 185 passing.

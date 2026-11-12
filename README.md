@@ -18,6 +18,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Record** your screen, a window or a tab straight from the browser — or open / drag-and-drop a WebM or MP4 file
 - **Style** the frame: six gradient backdrops, any solid colour, or your own image (with optional blur), plus padding, corner radius, shadow and an optional plain window title bar (light or dark)
 - **Canvas sizes** for every platform: 16:9, 1:1, 9:16 and 4:3
+- **Look presets**: press *Save this look* to keep the backdrop, canvas size, padding, corners, shadow and window bar; next time, one click on the saved look styles a new clip the same way (up to 8 looks, kept in this browser; image backdrops are not stored)
 - **Smooth zooms**: press *Add zoom here*, click the preview to aim it, choose 1.4×–3×. Zooms ease in and out automatically
 - **Trim** the start and end — set them to the playhead with a button or the <kbd>I</kbd> / <kbd>O</kbd> keys
 - **Auto zoom**: one click scans the clip for moments where only part of the screen changes (a menu opens, text is typed) and adds zooms aimed at them — no cursor tracking or extension needed. Tweak or undo them like any other zoom
@@ -73,7 +74,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer, and 
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: saved look presets, a cursor highlight and a faster export in a worker.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a cursor highlight and a faster export in a worker.
 
 Shared links to the hosted site show a preview card (`public/social-preview.png`). The Open Graph / Twitter tags are added at build time; in GitHub Actions the image URL is worked out from the repository name, so the card keeps working after a rename.
 

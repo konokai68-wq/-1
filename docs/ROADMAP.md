@@ -34,7 +34,7 @@ Everything runs locally; no server, no account.
 - [x] Window frame: optional plain title bar (light / dark) above the recording, saved with the project, in every export (`windowLayout` in `layout.ts`)
 - [x] Blur boxes: pixelate or solid-fill parts of the screen for the whole clip or a time span (drag / resize on the preview; follow zooms; in every export, worker included) (`masks.ts`)
 - [x] Spotlight: a box style that dims everything around it (drawn before hiding boxes, so hidden spots stay hidden; in every export) (`drawOrder` in `masks.ts`)
-- [ ] Look presets: save the backdrop / padding / corners / shadow / window frame and apply them to the next clip in one click
+- [x] Look presets: save the backdrop / canvas size / padding / corners / shadow / window frame and apply them to the next clip in one click (up to 8, localStorage; image backdrops are not stored) (`looks.ts`)
 - [ ] Optional cursor highlight when recording this browser tab
 - [x] Save / load projects locally (IndexedDB autosave of the last project, *Resume last project* / *Discard* on the start screen)
 
