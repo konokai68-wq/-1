@@ -6,6 +6,7 @@ Newest first. One short entry per working session.
 - Each blur box row has *Whole clip / Part of the clip*; *Part* starts a 3 s span at the playhead, and *From* / *To* move either end to the playhead (`timeMask`, `setMaskEdge`, `maskShown` in `masks.ts`, pure and tested). Off boxes show faintly in the preview and stay draggable. Saved with the project; a broken span falls back to the whole clip (hiding more, never less). Part of undo; English / Japanese labels.
 - Fix: the blur box row was wider than the inspector and pushed it sideways; it now wraps.
 - Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip, solid box shown 1–4 s → preview and 1080p60 MP4 (480 frames) show it at 2 s / 3.9 s and not at 0.5 s / 5 s; undo / redo, reload → Resume keep the span; no page errors. Tests: 184 passing.
+- The owner renamed the repo to `panreel` and Pages deploys succeed: default repo links now point to `konokai68-wq/panreel`, README links the hosted app.
 - Next: cursor highlight.
 
 ## 2026-11-11 22:00 JST — blur boxes

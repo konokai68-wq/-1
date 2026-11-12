@@ -2,6 +2,8 @@
 
 **Turn raw screen recordings into polished demo videos — free, open source, and entirely in your browser.**
 
+**[▶ Try it in your browser](https://konokai68-wq.github.io/panreel/)** — nothing to install, nothing uploaded.
+
 Panreel is a lightweight, browser-only alternative to paid screen-recording studios such as Screen Studio. Record your screen (or drop in an existing clip), put it on a clean backdrop with rounded corners and a soft shadow, add smooth zooms to the moments that matter, and export. No install, no account, no upload: your video never leaves your device.
 
 ![A short task-list screencast turned into a demo by Panreel: gradient backdrop, a zoom on the new task, a 4× speed-up while typing, and a callout with an arrow](docs/demo.gif)
@@ -52,7 +54,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 
 ## Use it
 
-The hosted version will live on GitHub Pages once it is enabled. To run it locally:
+The hosted version is at **https://konokai68-wq.github.io/panreel/**. To run it locally:
 
 ```bash
 npm install
@@ -71,7 +73,7 @@ Then open the printed URL in Chrome, Edge or Firefox on a desktop computer, and 
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: the hosted demo on GitHub Pages, a faster export in a worker and a cursor highlight.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a cursor highlight and a faster export in a worker.
 
 Shared links to the hosted site show a preview card (`public/social-preview.png`). The Open Graph / Twitter tags are added at build time; in GitHub Actions the image URL is worked out from the repository name, so the card keeps working after a rename.
 
