@@ -23,7 +23,7 @@ export function pagesUrl(repository: string | undefined): string | null {
 }
 
 /** Where the source lives today; GitHub redirects old names after a rename. */
-export const DEFAULT_REPOSITORY = "konokai68-wq/-1";
+export const DEFAULT_REPOSITORY = "konokai68-wq/panreel";
 
 /** github.com URL for "owner/repo"; falls back to DEFAULT_REPOSITORY when unknown. */
 export function repoUrl(repository: string | undefined): string {

@@ -44,7 +44,7 @@ describe("repoUrl", () => {
     expect(repoUrl("someone/panreel")).toBe("https://github.com/someone/panreel");
   });
   it("falls back to the current repository when unknown or malformed", () => {
-    expect(repoUrl(undefined)).toBe("https://github.com/konokai68-wq/-1");
-    expect(repoUrl("not a repo")).toBe("https://github.com/konokai68-wq/-1");
+    expect(repoUrl(undefined)).toBe("https://github.com/konokai68-wq/panreel");
+    expect(repoUrl("not a repo")).toBe("https://github.com/konokai68-wq/panreel");
   });
 });
