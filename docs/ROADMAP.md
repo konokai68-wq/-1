@@ -35,6 +35,7 @@ Everything runs locally; no server, no account.
 - [x] Blur boxes: pixelate or solid-fill parts of the screen for the whole clip or a time span (drag / resize on the preview; follow zooms; in every export, worker included) (`masks.ts`)
 - [x] Spotlight: a box style that dims everything around it (drawn before hiding boxes, so hidden spots stay hidden; in every export) (`drawOrder` in `masks.ts`)
 - [x] Look presets: save the backdrop / canvas size / padding / corners / shadow / window frame and apply them to the next clip in one click (up to 8, localStorage; image backdrops are not stored) (`looks.ts`)
+- [x] Motion blur on zooms: each frame averages a few views over a short shutter while the camera moves (sharp when still; blur boxes cover every view; on by default, saved with the project) (`motionBlur.ts`)
 - [ ] Optional cursor highlight when recording this browser tab
 - [x] Save / load projects locally (IndexedDB autosave of the last project, *Resume last project* / *Discard* on the start screen)
 

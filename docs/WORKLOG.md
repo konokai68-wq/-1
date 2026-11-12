@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-12 22:00 JST — motion blur on zooms
+- *Frame → Motion blur on zooms* (on by default): while a zoom eases in or out, each frame averages up to 12 views of the picture over a 14 ms shutter, one per ~3 output pixels of movement, so zooms look like a smooth camera move instead of a slide. Still frames are drawn once, as before. `blurWindows` / `windowMovePx` in `motionBlur.ts` (pure, tested); `drawFrame` composites the views at 1/(k+1) alpha. Blur boxes cover the spot in every view, so a smeared copy of hidden text never shows. Saved with the project (older projects get it on); English / Japanese.
+- Checked in headless Chromium (sample clip + Auto zoom): preview edge energy during ramps drops to 0.28–0.76 of the sharp frame, identical when still; 1080p60 MP4 (480 frames) blurred in page export (`en-US`) and `?export=worker`, sharp with it off (`ja-JP`, worker); reload → Resume keeps the setting; no page errors. Tests: 199 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-12 18:00 JST — look presets
 - New *Looks* box at the top of the inspector: *Save this look* keeps the backdrop (gradient or colour), canvas size, padding, corners, shadow and window bar in localStorage (`panreel.looks`, up to 8, named "Look 1", "Look 2"…); a click on a saved look applies it — before a clip is open too, so it styles the next one. The look that matches the current style is outlined; saving an identical look says which one it is. `looks.ts` (pure, tested: sanitize, compare, name, add / remove, chip colour). Applying is one undo step for the frame sliders. English / Japanese.
 - Checked in headless Chromium (`en-US`, `ja-JP`): save → duplicate message → reload → apply → load the sample clip keeps the look; edit, re-apply, Ctrl+Z; remove; no page errors. Tests: 192 passing.
