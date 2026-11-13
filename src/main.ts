@@ -2,7 +2,7 @@ import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { etaTracker, withLeft } from "./eta";
 import { WINDOW_CHROMES, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
-import { CROP_EDGES, FULL_CROP, cropEdges, isFullCrop, sameCrop, setCropEdge, viewCenter, viewSize, viewWindows, zoomsIntoView, type Crop } from "./crop";
+import { CROP_EDGES, FULL_CROP, cropEdges, cropFromPoints, cropPixels, isFullCrop, sameCrop, setCropEdge, viewCenter, viewSize, viewWindows, zoomsIntoView, type Crop } from "./crop";
 import { stillFileName } from "./still";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
@@ -158,6 +158,8 @@ function previewCamera(): CameraLayer | null {
 
 function render() {
   syncCamera();
+  if (cropDrawing && (!hasVideo || exporting)) stopCropDraw();
+  if (cropDrawing) return renderCropDraw();
   drawFrame(
     ctx,
     hasVideo ? video : null,
@@ -402,6 +404,7 @@ function applyMotionBlur(on: boolean) {
 // ---- Crop ----------------------------------------------------------------------
 
 const cropReset = $<HTMLButtonElement>("cropReset");
+const cropDraw = $<HTMLButtonElement>("cropDraw");
 const cropInputs = Object.fromEntries(CROP_EDGES.map((e) => [e, $<HTMLInputElement>(`crop-${e}`)])) as Record<(typeof CROP_EDGES)[number], HTMLInputElement>;
 
 /** Show the crop on the sliders (an edge that hit the minimum size snaps back). */
@@ -409,6 +412,7 @@ function syncCropUi() {
   const e = cropEdges(style.crop);
   for (const k of CROP_EDGES) cropInputs[k].value = String(e[k]);
   cropReset.disabled = isFullCrop(style.crop);
+  cropDraw.disabled = !hasVideo;
 }
 
 function applyCrop(c: Crop) {
@@ -431,6 +435,136 @@ cropReset.addEventListener("click", () => {
   notify(t("msg.cropReset"));
 });
 syncCropUi();
+
+// Draw the crop on the preview: while drawing, the preview shows the whole
+// video (no crop, no zoom) with the current crop outlined; drag a box to
+// replace it. Other preview drags and click-to-aim are off meanwhile.
+let cropDrawing = false;
+let cropBox: { pointerId: number; a: { x: number; y: number }; b: { x: number; y: number } } | null = null;
+
+function setCropDrawUi() {
+  cropDraw.setAttribute("aria-pressed", String(cropDrawing));
+  const key = cropDrawing ? "crop.drawing" : "crop.draw";
+  cropDraw.dataset.i18n = key;
+  cropDraw.textContent = t(key);
+  canvas.classList.toggle("drawing-crop", cropDrawing);
+}
+
+function startCropDraw() {
+  if (!hasVideo || exporting) return;
+  video.pause();
+  cropDrawing = true;
+  cropBox = null;
+  setCropDrawUi();
+  notify(t("msg.cropDraw"));
+}
+
+function stopCropDraw() {
+  cropDrawing = false;
+  cropBox = null;
+  setCropDrawUi();
+}
+
+cropDraw.addEventListener("click", () => {
+  if (!cropDrawing) return startCropDraw();
+  stopCropDraw();
+  notify(t("msg.cropDrawCancelled"));
+});
+
+/** The whole (uncropped) video on the preview while drawing. */
+function fullContent() {
+  return windowLayout(canvas, sourceSize(), style.padding, style.chrome).content;
+}
+
+/** A preview point → source fractions (not clamped). */
+function cropPoint(e: MouseEvent) {
+  const p = canvasPoint(e);
+  const f = fullContent();
+  return { x: (p.x - f.x) / f.width, y: (p.y - f.y) / f.height };
+}
+
+function renderCropDraw() {
+  const src = sourceSize();
+  drawFrame(ctx, video, src, { ...style, crop: { ...FULL_CROP }, motionBlur: false }, [], video.currentTime, null, [], masks);
+  const f = fullContent();
+  const c = cropBox ? cropFromPoints(cropBox.a, cropBox.b) : style.crop;
+  const r = cropPixels({ width: f.width, height: f.height }, c);
+  const x = f.x + r.x;
+  const y = f.y + r.y;
+  const lw = Math.max(2, canvas.width / 640);
+  ctx.save();
+  // Dim what the crop cuts off.
+  ctx.fillStyle = "rgba(10, 12, 16, 0.6)";
+  ctx.beginPath();
+  ctx.rect(f.x, f.y, f.width, f.height);
+  ctx.rect(x, y, r.width, r.height);
+  ctx.fill("evenodd");
+  ctx.lineWidth = lw;
+  ctx.setLineDash([lw * 4, lw * 3]);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.strokeRect(x, y, r.width, r.height);
+  ctx.lineDashOffset = lw * 3.5;
+  ctx.strokeStyle = "rgba(240, 116, 62, 0.95)";
+  ctx.strokeRect(x, y, r.width, r.height);
+  ctx.restore();
+}
+
+// Capture-phase listeners on the canvas run before the other preview drags.
+canvas.addEventListener(
+  "pointerdown",
+  (e) => {
+    if (!cropDrawing) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const at = cropPoint(e);
+    cropBox = { pointerId: e.pointerId, a: at, b: at };
+    canvas.setPointerCapture(e.pointerId);
+  },
+  { capture: true },
+);
+canvas.addEventListener(
+  "pointermove",
+  (e) => {
+    if (!cropDrawing) return;
+    e.stopImmediatePropagation();
+    if (cropBox && e.pointerId === cropBox.pointerId) cropBox.b = cropPoint(e);
+  },
+  { capture: true },
+);
+const endCropBox = (e: PointerEvent) => {
+  if (!cropDrawing) return;
+  e.stopImmediatePropagation();
+  // The click that follows never aims a zoom.
+  suppressClick = true;
+  if (!cropBox || e.pointerId !== cropBox.pointerId) return;
+  const { a, b } = cropBox;
+  cropBox = null;
+  if (e.type === "pointercancel") return;
+  // A plain click (no real box) keeps drawing.
+  const f = fullContent();
+  if (Math.abs(b.x - a.x) * f.width < 8 || Math.abs(b.y - a.y) * f.height < 8) return;
+  const next = cropFromPoints(a, b);
+  stopCropDraw();
+  if (!sameCrop(next, style.crop)) {
+    checkpoint();
+    applyCrop(next);
+  }
+  notify(t("msg.cropDrawn"));
+};
+canvas.addEventListener("pointerup", endCropBox, { capture: true });
+canvas.addEventListener("pointercancel", endCropBox, { capture: true });
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (!cropDrawing || e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    stopCropDraw();
+    notify(t("msg.cropDrawCancelled"));
+  },
+  { capture: true },
+);
 
 for (const key of ["padding", "radius", "shadow"] as const) {
   const input = $<HTMLInputElement>(key);

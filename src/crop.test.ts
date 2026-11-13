@@ -4,6 +4,7 @@ import {
   MIN_CROP,
   cropEdges,
   cropFromEdges,
+  cropFromPoints,
   cropPixels,
   isFullCrop,
   sameCrop,
@@ -17,6 +18,37 @@ import {
 } from "./crop";
 
 const SRC = { width: 2000, height: 1000 };
+
+describe("cropFromPoints", () => {
+  it("turns a dragged box into a crop, whichever corner came first", () => {
+    const want = { x: 0.6, y: 0.05, width: 0.35, height: 0.4 };
+    expect(cropFromPoints({ x: 0.6, y: 0.05 }, { x: 0.95, y: 0.45 })).toEqual(want);
+    expect(cropFromPoints({ x: 0.95, y: 0.45 }, { x: 0.6, y: 0.05 })).toEqual(want);
+    expect(cropFromPoints({ x: 0.95, y: 0.05 }, { x: 0.6, y: 0.45 })).toEqual(want);
+  });
+
+  it("clamps to the video", () => {
+    expect(cropFromPoints({ x: -0.2, y: -1 }, { x: 0.5, y: 2 })).toEqual({ x: 0, y: 0, width: 0.5, height: 1 });
+  });
+
+  it("grows a thin box to the minimum size around its middle, inside the video", () => {
+    const c = cropFromPoints({ x: 0.5, y: 0.98 }, { x: 0.52, y: 1 });
+    expect(c.width).toBeCloseTo(MIN_CROP);
+    expect(c.height).toBeCloseTo(MIN_CROP);
+    expect(c.x).toBeCloseTo(0.46);
+    expect(c.y + c.height).toBeCloseTo(1);
+  });
+
+  it("can keep a small corner far from the middle (survives sanitizing)", () => {
+    const c = cropFromPoints({ x: 0.7, y: 0.75 }, { x: 0.95, y: 0.95 });
+    expect(c).toEqual({ x: 0.7, y: 0.75, width: 0.25, height: 0.2 });
+    expect(sanitizeCrop(c)).toEqual(c);
+  });
+
+  it("ignores NaN", () => {
+    expect(cropFromPoints({ x: NaN, y: 0 }, { x: 1, y: 1 })).toEqual(FULL_CROP);
+  });
+});
 
 describe("crop edges", () => {
   it("round-trips between edges and a crop", () => {
@@ -37,7 +69,7 @@ describe("crop edges", () => {
   });
 
   it("clamps negative, huge and NaN edges", () => {
-    expect(cropFromEdges({ left: -1, right: NaN, top: 9, bottom: 0 })).toEqual({ x: 0, y: 0.45, width: 1, height: 0.55 });
+    expect(cropFromEdges({ left: -1, right: NaN, top: 9, bottom: 0 })).toEqual({ x: 0, y: 0.9, width: 1, height: 0.1 });
   });
 
   it("changes one edge and keeps the others", () => {

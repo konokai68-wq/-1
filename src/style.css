@@ -362,6 +362,8 @@ label.link-btn { cursor: pointer; }
 #canvas.over-mask { cursor: move; }
 #canvas.over-mask-corner { cursor: nwse-resize; }
 #canvas.moving-mask { cursor: grabbing; }
+#canvas.drawing-crop { cursor: crosshair; }
+.row-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .mask-list li { display: flex; flex-wrap: wrap; border-left: 3px solid var(--ink-soft); }
 /* Name, style and timing wrap in the narrow inspector; Remove stays on the right. */
 .mask-list li > span { flex: 1 0 auto; }

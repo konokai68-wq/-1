@@ -19,8 +19,8 @@ export const FULL_CROP: Crop = { x: 0, y: 0, width: 1, height: 1 };
 
 /** Smallest part of the source a crop can keep, per axis. */
 export const MIN_CROP = 0.1;
-/** Most that can be cut from one edge (matches the sliders). */
-export const MAX_EDGE = 0.45;
+/** Most that can be cut from one edge (matches the sliders): anything that leaves MIN_CROP. */
+export const MAX_EDGE = 1 - MIN_CROP;
 
 /** How much is cut from each edge, as fractions of the source. */
 export interface CropEdges {
@@ -90,6 +90,27 @@ export function viewWindows(source: Size, c: Crop, zooms: readonly ZoomSegment[]
   const wins = motionBlur ? blurWindows(view, zooms, time, outputWidth) : [sourceWindow(view, cameraAt(time, zooms))];
   const off = cropPixels(source, c);
   return wins.map((w) => ({ x: w.x + off.x, y: w.y + off.y, width: w.width, height: w.height }));
+}
+
+/**
+ * The crop for a box dragged on the uncropped preview, from two corners in
+ * source fractions (any order, clamped to the video). A box thinner than
+ * MIN_CROP grows around its middle, staying inside the video.
+ */
+export function cropFromPoints(a: { x: number; y: number }, b: { x: number; y: number }): Crop {
+  const span = (p: number, q: number) => {
+    let lo = clamp(Math.min(finite(p), finite(q)), 0, 1);
+    let hi = clamp(Math.max(finite(p), finite(q)), 0, 1);
+    if (hi - lo < MIN_CROP) {
+      const mid = clamp((lo + hi) / 2, MIN_CROP / 2, 1 - MIN_CROP / 2);
+      lo = mid - MIN_CROP / 2;
+      hi = mid + MIN_CROP / 2;
+    }
+    return [lo, hi] as const;
+  };
+  const [x0, x1] = span(a.x, b.x);
+  const [y0, y1] = span(a.y, b.y);
+  return cropFromEdges({ left: x0, right: 1 - x1, top: y0, bottom: 1 - y1 });
 }
 
 /** A point in source fractions → fractions of the cropped view, or null when it is cut off. */
