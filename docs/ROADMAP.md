@@ -37,7 +37,7 @@ Everything runs locally; no server, no account.
 - [x] Spotlight: a box style that dims everything around it (drawn before hiding boxes, so hidden spots stay hidden; in every export) (`drawOrder` in `masks.ts`)
 - [x] Look presets: save the backdrop / canvas size / padding / corners / shadow / window frame and apply them to the next clip in one click (up to 8, localStorage; image backdrops are not stored) (`looks.ts`)
 - [x] Motion blur on zooms: each frame averages a few views over a short shutter while the camera moves (sharp when still; blur boxes cover every view; on by default, saved with the project) (`motionBlur.ts`)
-- [x] Crop the recording: Left / Right / Top / Bottom sliders keep part of the source; zooms, auto zoom and click-to-aim work inside the crop, blur boxes keep source coordinates; saved with the project, part of undo, in every export (`crop.ts`)
+- [x] Crop the recording: drag a box on the preview (*Draw on the preview*, whole video shown while drawing) or use the Left / Right / Top / Bottom sliders to keep part of the source; zooms, auto zoom and click-to-aim work inside the crop, blur boxes keep source coordinates; saved with the project, part of undo, in every export (`crop.ts`)
 - [ ] Optional cursor highlight when recording this browser tab
 - [x] Save / load projects locally (IndexedDB autosave of the last project, *Resume last project* / *Discard* on the start screen)
 

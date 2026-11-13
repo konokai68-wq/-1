@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-13 18:00 JST — draw the crop on the preview
+- *Crop → Draw on the preview*: the preview shows the whole video (no crop, no zoom) with the current crop outlined and the rest dimmed; drag a box around the part to keep and it becomes the crop (one undo step). <kbd>Esc</kbd> or *Cancel drawing* leaves it unchanged; a plain click keeps drawing; other preview drags and click-to-aim are off while drawing. `cropFromPoints` in `crop.ts` (pure, tested): any corner order, clamped to the video, thin boxes grow to the 10 % minimum. Edges may now cut up to 90 % (sliders too), so a small window in a corner can be kept. English / Japanese.
+- Checked in headless Chromium (`en-US`, `ja-JP`): sample clip, drag around the share menu → crop left 56 % / bottom 50 %, preview shows only the menu; Esc cancels; Ctrl+Z / Ctrl+Shift+Z undo and redo it; no page errors. Tests: 221 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-13 13:00 JST — crop the recording
 - New *Crop* box in the inspector: *Left* / *Right* / *Top* / *Bottom* sliders (up to 45 % each, at least 10 % of each axis kept) and *Show the whole video*. `crop.ts` (pure, tested): the layout fits the cropped view, zoom windows (and motion-blur views) are worked out inside it and moved to the crop's spot in the source; blur boxes stay in source coordinates, pixel blocks are sized on the cropped frame. Auto zoom suggestions are re-aimed inside the crop (ones aimed at a cut-off part are dropped); a new blur box lands in the middle of the crop. Saved with the project (older projects show the whole video), part of undo, every export (worker too); English / Japanese.
 - Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip cropped left 40 % / bottom 45 % → preview, 1920 × 1080 PNG and 1080p60 MP4 (480 frames) show just the top-right with the share menu; undo / redo, reload → Resume keep the crop, reset clears it; no page errors. Tests: 216 passing.
