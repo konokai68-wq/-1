@@ -12,6 +12,7 @@ const good: ProjectData = {
   frame: { padding: 0.1, radius: 0.03, shadow: 0.5 },
   chrome: "dark",
   motionBlur: false,
+  clickRipple: true,
   crop: { x: 0.1, y: 0, width: 0.8, height: 0.9 },
   backdrop: { kind: "solid", color: "#112233" },
   bubble: { visible: false, shape: "rounded", size: 0.3, corner: "tl", mirror: false },
@@ -33,6 +34,13 @@ describe("sanitizeProject", () => {
     const { motionBlur: _, ...old } = good;
     expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.motionBlur).toBe(true);
     expect(sanitizeProject({ ...good, motionBlur: "yes" }, defaults)?.motionBlur).toBe(true);
+  });
+
+  it("keeps the click ripple, and turns it off for older or broken projects", () => {
+    expect(sanitizeProject(good, defaults)?.clickRipple).toBe(true);
+    const { clickRipple: _, ...old } = good;
+    expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.clickRipple).toBe(false);
+    expect(sanitizeProject({ ...good, clickRipple: "yes" }, defaults)?.clickRipple).toBe(false);
   });
 
   it("keeps the crop, and shows the whole video for older or broken projects", () => {

@@ -23,6 +23,8 @@ export interface ProjectData {
   chrome: WindowChrome;
   /** Motion blur on zooms; on when missing (projects saved before it existed). */
   motionBlur: boolean;
+  /** Click ripple at each zoom's aim point; off when missing (projects saved before it existed). */
+  clickRipple: boolean;
   /** Part of the source shown; the whole video when missing (projects saved before it existed). */
   crop: Crop;
   backdrop: SavedBackdrop;
@@ -91,6 +93,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
 
   const chrome = WINDOW_CHROMES.includes(raw.chrome as WindowChrome) ? (raw.chrome as WindowChrome) : "none";
   const motionBlur = typeof raw.motionBlur === "boolean" ? raw.motionBlur : true;
+  const clickRipple = raw.clickRipple === true;
   const crop = sanitizeCrop(raw.crop);
 
   const b = isObj(raw.backdrop) ? raw.backdrop : {};
@@ -145,7 +148,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
     return time ? { ...box, time } : box;
   }).slice(0, MAX_MASKS);
 
-  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, motionBlur, crop, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
+  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, motionBlur, clickRipple, crop, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
 }
 
 /** "3 zooms · 1 cut · 2 texts · 1 blur box", or "" when nothing has been added yet. */

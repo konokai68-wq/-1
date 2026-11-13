@@ -127,7 +127,7 @@ const resumeBtn = $<HTMLButtonElement>("resumeBtn");
 const discardBtn = $<HTMLButtonElement>("discardBtn");
 const resumeInfo = $("resumeInfo");
 
-const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true, crop: { ...FULL_CROP } };
+const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true, clickRipple: false, crop: { ...FULL_CROP } };
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
@@ -399,6 +399,15 @@ motionBlurInput.addEventListener("change", () => (style.motionBlur = motionBlurI
 function applyMotionBlur(on: boolean) {
   style.motionBlur = on;
   motionBlurInput.checked = on;
+}
+
+const clickRippleInput = $<HTMLInputElement>("clickRipple");
+clickRippleInput.checked = style.clickRipple;
+clickRippleInput.addEventListener("change", () => (style.clickRipple = clickRippleInput.checked));
+
+function applyClickRipple(on: boolean) {
+  style.clickRipple = on;
+  clickRippleInput.checked = on;
 }
 
 // ---- Crop ----------------------------------------------------------------------
@@ -2058,6 +2067,7 @@ function projectData(): ProjectData {
     frame: s.frame,
     chrome: style.chrome,
     motionBlur: style.motionBlur,
+    clickRipple: style.clickRipple,
     crop: s.crop,
     backdrop: savedBackdrop(),
     bubble: { ...bubble },
@@ -2144,6 +2154,7 @@ async function resume() {
   applyBubble(p.bubble);
   applyChrome(p.chrome);
   applyMotionBlur(p.motionBlur);
+  applyClickRipple(p.clickRipple);
   restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame, crop: p.crop });
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;

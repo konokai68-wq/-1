@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-13 22:00 JST — click ripple on zooms
+- New *Click ripple on zooms* check (off by default): once a zoom has eased in, a ring grows and fades at its aim point, like a click landing there, so viewers see what was zoomed to. `ripples.ts` (pure, tested): `rippleStart` fires after the ease-in, `rippleAt` never outlives its zoom, `rippleShape` grows and fades. `drawFrame` draws it in the current view window (follows zoom and crop) with a dark-edged white ring so it reads on light and dark screens; none in preview outlines, in every export (worker too). Saved with the project (older projects get it off); English / Japanese.
+- Checked in headless Chromium (`en-US`, `ja-JP` with `?export=worker`): sample clip, add a zoom aimed top-right → ring appears only with the box on (~430 changed px vs off), gone by the zoom's end; 1920×1080 PNG export (P key) shows the ring; no page errors. Tests: 227 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-13 18:00 JST — draw the crop on the preview
 - *Crop → Draw on the preview*: the preview shows the whole video (no crop, no zoom) with the current crop outlined and the rest dimmed; drag a box around the part to keep and it becomes the crop (one undo step). <kbd>Esc</kbd> or *Cancel drawing* leaves it unchanged; a plain click keeps drawing; other preview drags and click-to-aim are off while drawing. `cropFromPoints` in `crop.ts` (pure, tested): any corner order, clamped to the video, thin boxes grow to the 10 % minimum. Edges may now cut up to 90 % (sliders too), so a small window in a corner can be kept. English / Japanese.
 - Checked in headless Chromium (`en-US`, `ja-JP`): sample clip, drag around the share menu → crop left 56 % / bottom 50 %, preview shows only the menu; Esc cancels; Ctrl+Z / Ctrl+Shift+Z undo and redo it; no page errors. Tests: 221 passing.

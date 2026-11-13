@@ -1,7 +1,8 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
-import { viewSize, viewWindows, type Crop } from "./crop";
+import { cropPixels, viewSize, viewWindows, type Crop } from "./crop";
 import { coverRect, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
 import { SPOTLIGHT_DIM, drawOrder, maskRect, maskShown, pixelBlock, type Mask } from "./masks";
+import { RIPPLE_RADIUS, rippleAt, rippleShape } from "./ripples";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
 /** 2D context of an on-page canvas or of an OffscreenCanvas (export worker). */
@@ -66,6 +67,8 @@ export interface Style {
   motionBlur: boolean;
   /** The part of the source to show (fractions of the source; FULL_CROP keeps all of it). */
   crop: Crop;
+  /** A ring that grows and fades at each zoom's aim point once the camera arrives. */
+  clickRipple: boolean;
 }
 
 /** A webcam picture to draw as a bubble over the frame. */
@@ -116,6 +119,7 @@ export function drawFrame(
     ctx.globalAlpha = 1;
     const shown = masks.filter((m) => maskShown(m, time));
     if (shown.length) drawMasks(ctx, source, sourceSize, wins, content, shown, style.crop);
+    if (style.clickRipple) drawRipple(ctx, sourceSize, style.crop, wins[wins.length - 1], content, zooms, time);
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(content.x, content.y, content.width, content.height);
@@ -125,6 +129,31 @@ export function drawFrame(
 
   if (camera?.bubble.visible && camera.size.width > 0) drawBubble(ctx, camera);
   drawTexts(ctx, texts, time);
+}
+
+/** The click ripple at `time`, if any: a soft disc and a ring with a dark edge so it shows on light and dark screens. */
+function drawRipple(ctx: Ctx2D, sourceSize: Size, crop: Crop, win: Rect, content: Rect, zooms: readonly ZoomSegment[], time: number): void {
+  const rip = rippleAt(zooms, time);
+  if (!rip) return;
+  const view = viewSize(sourceSize, crop);
+  const off = cropPixels(sourceSize, crop);
+  const x = content.x + (off.x + rip.x * view.width - win.x) * (content.width / win.width);
+  const y = content.y + (off.y + rip.y * view.height - win.y) * (content.height / win.height);
+  const { size, alpha } = rippleShape(rip.progress);
+  const r = size * RIPPLE_RADIUS * Math.min(content.width, content.height);
+  if (alpha <= 0 || r <= 0) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.28 * alpha})`;
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.5, r * 0.16);
+  ctx.strokeStyle = `rgba(10, 14, 24, ${0.45 * alpha})`;
+  ctx.stroke();
+  ctx.lineWidth = Math.max(1, r * 0.09);
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.95 * alpha})`;
+  ctx.stroke();
+  ctx.restore();
 }
 
 let scratch: OffscreenCanvas | HTMLCanvasElement | null = null;
