@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-14 09:00 JST — linked zooms glide
+- Zooms less than 1 s apart (`ZOOM_LINK_GAP`) are now linked: `cameraAt` glides from one zoom's aim point and scale to the next, from the first one's ease-out to the second one's ease-in, instead of zooming out to the full view and back in. Outer edges still ease from / to the full view; zooms farther apart behave as before. Motion blur, ripples and every export use the same camera. `zoomsLinked` / `cameraAt` in `layout.ts` (pure, tested: no dip in scale, continuous, monotonic glide, touching and unsorted zooms).
+- Checked in headless Chromium (`en-US`, `ja-JP`): sample clip, zooms at 0.5 s and 4.0 s (0.5 s gap) → the preview stays zoomed through the gap (diff vs full view 32 at 3.75 s, same as inside the zooms) and returns to the full view after 7 s; no page errors. Tests: 233 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-13 22:00 JST — click ripple on zooms
 - New *Click ripple on zooms* check (off by default): once a zoom has eased in, a ring grows and fades at its aim point, like a click landing there, so viewers see what was zoomed to. `ripples.ts` (pure, tested): `rippleStart` fires after the ease-in, `rippleAt` never outlives its zoom, `rippleShape` grows and fades. `drawFrame` draws it in the current view window (follows zoom and crop) with a dark-edged white ring so it reads on light and dark screens; none in preview outlines, in every export (worker too). Saved with the project (older projects get it off); English / Japanese.
 - Checked in headless Chromium (`en-US`, `ja-JP` with `?export=worker`): sample clip, add a zoom aimed top-right → ring appears only with the box on (~430 changed px vs off), gone by the zoom's end; 1920×1080 PNG export (P key) shows the ring; no page errors. Tests: 227 passing.
