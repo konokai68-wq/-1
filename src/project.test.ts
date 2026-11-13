@@ -12,6 +12,7 @@ const good: ProjectData = {
   frame: { padding: 0.1, radius: 0.03, shadow: 0.5 },
   chrome: "dark",
   motionBlur: false,
+  crop: { x: 0.1, y: 0, width: 0.8, height: 0.9 },
   backdrop: { kind: "solid", color: "#112233" },
   bubble: { visible: false, shape: "rounded", size: 0.3, corner: "tl", mirror: false },
   zooms: [{ start: 1, end: 3, scale: 1.8, focusX: 0.2, focusY: 0.7 }],
@@ -32,6 +33,12 @@ describe("sanitizeProject", () => {
     const { motionBlur: _, ...old } = good;
     expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.motionBlur).toBe(true);
     expect(sanitizeProject({ ...good, motionBlur: "yes" }, defaults)?.motionBlur).toBe(true);
+  });
+
+  it("keeps the crop, and shows the whole video for older or broken projects", () => {
+    const { crop: _, ...old } = good;
+    expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.crop).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+    expect(sanitizeProject({ ...good, crop: { x: "a" } }, defaults)?.crop).toEqual({ x: 0, y: 0, width: 1, height: 1 });
   });
 
   it("defaults the window chrome for older or broken projects", () => {

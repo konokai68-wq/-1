@@ -1,7 +1,8 @@
 import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { etaTracker, withLeft } from "./eta";
-import { WINDOW_CHROMES, cameraAt, sourceWindow, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
+import { WINDOW_CHROMES, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
+import { CROP_EDGES, FULL_CROP, cropEdges, isFullCrop, sameCrop, setCropEdge, viewCenter, viewSize, viewWindows, zoomsIntoView, type Crop } from "./crop";
 import { stillFileName } from "./still";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
 import { FORMATS, FRAME_RATES, RESOLUTIONS, exportSize, resolutionById, sanitizeSettings, type ExportSettings } from "./exportSettings";
@@ -126,7 +127,7 @@ const resumeBtn = $<HTMLButtonElement>("resumeBtn");
 const discardBtn = $<HTMLButtonElement>("discardBtn");
 const resumeInfo = $("resumeInfo");
 
-const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true };
+const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true, crop: { ...FULL_CROP } };
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
@@ -174,8 +175,8 @@ function render() {
 /** Where each blur box sits on the preview right now. */
 function maskRects() {
   const src = sourceSize();
-  const { content } = windowLayout(canvas, src, style.padding, style.chrome);
-  const win = sourceWindow(src, cameraAt(video.currentTime, zooms));
+  const { content } = windowLayout(canvas, viewSize(src, style.crop), style.padding, style.chrome);
+  const win = viewWindows(src, style.crop, zooms, video.currentTime, content.width, false)[0];
   return { rects: masks.map((m) => maskRect(m, src, win, content)), src, win, content };
 }
 
@@ -398,6 +399,39 @@ function applyMotionBlur(on: boolean) {
   motionBlurInput.checked = on;
 }
 
+// ---- Crop ----------------------------------------------------------------------
+
+const cropReset = $<HTMLButtonElement>("cropReset");
+const cropInputs = Object.fromEntries(CROP_EDGES.map((e) => [e, $<HTMLInputElement>(`crop-${e}`)])) as Record<(typeof CROP_EDGES)[number], HTMLInputElement>;
+
+/** Show the crop on the sliders (an edge that hit the minimum size snaps back). */
+function syncCropUi() {
+  const e = cropEdges(style.crop);
+  for (const k of CROP_EDGES) cropInputs[k].value = String(e[k]);
+  cropReset.disabled = isFullCrop(style.crop);
+}
+
+function applyCrop(c: Crop) {
+  style.crop = { ...c };
+  syncCropUi();
+}
+
+for (const k of CROP_EDGES) {
+  cropInputs[k].addEventListener("input", () => {
+    const next = setCropEdge(style.crop, k, Number(cropInputs[k].value));
+    if (sameCrop(next, style.crop)) return syncCropUi();
+    checkpoint(`crop-${k}`);
+    applyCrop(next);
+  });
+}
+cropReset.addEventListener("click", () => {
+  if (isFullCrop(style.crop)) return;
+  checkpoint();
+  applyCrop(FULL_CROP);
+  notify(t("msg.cropReset"));
+});
+syncCropUi();
+
 for (const key of ["padding", "radius", "shadow"] as const) {
   const input = $<HTMLInputElement>(key);
   input.value = String(style[key]);
@@ -549,6 +583,7 @@ interface EditState {
   texts: TextNote[];
   masks: Mask[];
   frame: Pick<Style, (typeof FRAME_KEYS)[number]>;
+  crop: Crop;
 }
 
 const history = new History<EditState>();
@@ -562,6 +597,7 @@ function snapshot(): EditState {
     texts: texts.map((n) => ({ ...n, ...(n.arrow ? { arrow: { ...n.arrow } } : {}) })),
     masks: masks.map((m) => ({ ...m })),
     frame: { padding: style.padding, radius: style.radius, shadow: style.shadow },
+    crop: { ...style.crop },
   };
 }
 
@@ -583,6 +619,7 @@ function restore(s: EditState) {
     style[key] = s.frame[key];
     $<HTMLInputElement>(key).value = String(s.frame[key]);
   }
+  applyCrop(s.crop);
   lastActive = -2;
   renderTrimUi();
   renderCutUi();
@@ -632,6 +669,7 @@ async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): 
     speeds = [];
     texts = [];
     masks = [];
+    applyCrop(FULL_CROP);
     trim = fullTrim(video.duration);
     history.clear();
     syncHistoryUi();
@@ -1130,6 +1168,9 @@ autoZoomBtn.addEventListener("click", async () => {
   if (failed) return notify(t("msg.autoFailed"));
   if (!found) return notify(t("msg.autoCancelled"));
   if (found.length === 0) return notify(t("msg.autoNone"));
+  // The scan looks at the whole source; aim inside the crop and drop what it cuts off.
+  found = zoomsIntoView(found, style.crop);
+  if (found.length === 0) return notify(t("msg.autoNone"));
   // Zooms added by hand while scanning win over suggestions that overlap them.
   found = found.filter((f) => !zooms.some((z) => f.start < z.end && z.start < f.end));
   if (found.length === 0) return notify(t("msg.autoOverlap"));
@@ -1178,7 +1219,7 @@ canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
   const cx = ((e.clientX - rect.left) / rect.width) * canvas.width;
   const cy = ((e.clientY - rect.top) / rect.height) * canvas.height;
-  const f = windowLayout(canvas, sourceSize(), style.padding, style.chrome).content;
+  const f = windowLayout(canvas, viewSize(sourceSize(), style.crop), style.padding, style.chrome).content;
   const fx = (cx - f.x) / f.width;
   const fy = (cy - f.y) / f.height;
   checkpoint();
@@ -1561,6 +1602,12 @@ addMaskBtn.addEventListener("click", () => {
   if (masks.length >= MAX_MASKS) return notify(t("msg.maskFull"));
   checkpoint();
   masks = addMask(masks);
+  if (!isFullCrop(style.crop)) {
+    // Put the new box in the middle of what is shown, not of the whole source.
+    const c = viewCenter(style.crop);
+    const m = masks[masks.length - 1];
+    masks[masks.length - 1] = moveMask(m, c.x - m.width / 2, c.y - m.height / 2);
+  }
   renderMaskUi();
   notify(t("msg.maskAdded"));
 });
@@ -1877,6 +1924,7 @@ function projectData(): ProjectData {
     frame: s.frame,
     chrome: style.chrome,
     motionBlur: style.motionBlur,
+    crop: s.crop,
     backdrop: savedBackdrop(),
     bubble: { ...bubble },
     zooms: s.zooms,
@@ -1962,7 +2010,7 @@ async function resume() {
   applyBubble(p.bubble);
   applyChrome(p.chrome);
   applyMotionBlur(p.motionBlur);
-  restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame });
+  restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame, crop: p.crop });
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;
   savedJson = JSON.stringify(projectData());

@@ -1,6 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
-import { cameraAt, coverRect, sourceWindow, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
-import { blurWindows } from "./motionBlur";
+import { viewSize, viewWindows, type Crop } from "./crop";
+import { coverRect, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
 import { SPOTLIGHT_DIM, drawOrder, maskRect, maskShown, pixelBlock, type Mask } from "./masks";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
@@ -64,6 +64,8 @@ export interface Style {
   chrome: WindowChrome;
   /** Smear the picture while a zoom moves, like a real camera pan. */
   motionBlur: boolean;
+  /** The part of the source to show (fractions of the source; FULL_CROP keeps all of it). */
+  crop: Crop;
 }
 
 /** A webcam picture to draw as a bubble over the frame. */
@@ -87,7 +89,7 @@ export function drawFrame(
   const { width, height } = ctx.canvas;
   paintBackdrop(ctx, style.backdrop, width, height);
 
-  const { outer: frame, bar, content } = windowLayout({ width, height }, sourceSize, style.padding, style.chrome);
+  const { outer: frame, bar, content } = windowLayout({ width, height }, viewSize(sourceSize, style.crop), style.padding, style.chrome);
   const r = style.radius * Math.min(frame.width, frame.height);
 
   if (style.shadow > 0) {
@@ -105,7 +107,7 @@ export function drawFrame(
   roundRect(ctx, frame.x, frame.y, frame.width, frame.height, r);
   ctx.clip();
   if (source && sourceSize.width > 0) {
-    const wins = style.motionBlur ? blurWindows(sourceSize, zooms, time, content.width) : [sourceWindow(sourceSize, cameraAt(time, zooms))];
+    const wins = viewWindows(sourceSize, style.crop, zooms, time, content.width, style.motionBlur);
     // Equal-weight average: view k goes on at 1/(k+1) over the views before it.
     wins.forEach((w, k) => {
       ctx.globalAlpha = 1 / (k + 1);
@@ -113,7 +115,7 @@ export function drawFrame(
     });
     ctx.globalAlpha = 1;
     const shown = masks.filter((m) => maskShown(m, time));
-    if (shown.length) drawMasks(ctx, source, sourceSize, wins, content, shown);
+    if (shown.length) drawMasks(ctx, source, sourceSize, wins, content, shown, style.crop);
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(content.x, content.y, content.width, content.height);
@@ -139,7 +141,7 @@ function scratchCanvas(w: number, h: number): OffscreenCanvas | HTMLCanvasElemen
  * spotlight box. Then each blur box hides what is underneath: big pixel
  * blocks, or a flat dark fill.
  */
-function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, wins: readonly Rect[], content: Rect, masks: readonly Mask[]): void {
+function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, wins: readonly Rect[], content: Rect, masks: readonly Mask[], crop: Crop): void {
   const win = wins[wins.length - 1];
   const block = pixelBlock(ctx.canvas);
   const { spots, hides } = drawOrder(masks);
@@ -162,20 +164,20 @@ function drawMasks(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, wins
     ctx.restore();
   }
   // With motion blur the hidden spot is smeared across every view, so cover it in each one.
-  for (const m of hides) hideBox(ctx, source, sourceSize, wins, content, m, block);
+  for (const m of hides) hideBox(ctx, source, sourceSize, wins, content, m, block, crop);
   ctx.restore();
 }
 
-function hideBox(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, wins: readonly Rect[], content: Rect, m: Mask, block: number): void {
+function hideBox(ctx: Ctx2D, source: CanvasImageSource, sourceSize: Size, wins: readonly Rect[], content: Rect, m: Mask, block: number, crop: Crop): void {
   const rects = wins.map((w) => maskRect(m, sourceSize, w, content));
   if (m.look === "solid") {
     ctx.fillStyle = "#15171c";
     for (const r of rects) ctx.fillRect(r.x, r.y, r.width, r.height);
     return;
   }
-  // Blocks are sized on the unzoomed frame, so zooming in makes them bigger, never more detailed.
-  const cols = Math.max(1, Math.ceil((m.width * content.width) / block));
-  const rows = Math.max(1, Math.ceil((m.height * content.height) / block));
+  // Blocks are sized on the unzoomed (cropped) frame, so zooming in makes them bigger, never more detailed.
+  const cols = Math.max(1, Math.ceil(((m.width / crop.width) * content.width) / block));
+  const rows = Math.max(1, Math.ceil(((m.height / crop.height) * content.height) / block));
   const tiny = scratchCanvas(cols, rows);
   const tctx = tiny.getContext("2d") as Ctx2D | null;
   if (!tctx) return;
