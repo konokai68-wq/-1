@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraAt, coverRect, easeInOut, fitFrame, sourceWindow, windowLayout, WINDOW_BAR, ZOOM_RAMP } from "./layout";
+import { cameraAt, coverRect, zoomsLinked, ZOOM_LINK_GAP, easeInOut, fitFrame, sourceWindow, windowLayout, WINDOW_BAR, ZOOM_RAMP } from "./layout";
 
 describe("fitFrame", () => {
   it("centers a 16:9 video inside a 16:9 canvas with padding", () => {
@@ -54,6 +54,58 @@ describe("cameraAt", () => {
   it("handles very short segments", () => {
     const c = cameraAt(1.05, [{ start: 1, end: 1.1, scale: 3, focusX: 0.5, focusY: 0.5 }]);
     expect(c.scale).toBeCloseTo(3);
+  });
+});
+
+describe("cameraAt with linked zooms", () => {
+  const a = { start: 1, end: 3, scale: 2, focusX: 0.2, focusY: 0.3 };
+  const b = { start: 3.5, end: 6, scale: 2.4, focusX: 0.8, focusY: 0.7 };
+
+  it("links zooms up to ZOOM_LINK_GAP apart, not overlapping or farther", () => {
+    expect(zoomsLinked(a, b)).toBe(true);
+    expect(zoomsLinked(a, { ...b, start: 3 + ZOOM_LINK_GAP + 0.01 })).toBe(false);
+    expect(zoomsLinked(b, a)).toBe(false);
+  });
+
+  it("never zooms out to the full view between linked zooms", () => {
+    for (let t = a.start + ZOOM_RAMP; t <= b.end - ZOOM_RAMP; t += 0.05) {
+      expect(cameraAt(t, [a, b]).scale).toBeGreaterThanOrEqual(2 - 1e-9);
+    }
+  });
+
+  it("glides from one aim point to the next and is continuous at the ends", () => {
+    const from = a.end - ZOOM_RAMP;
+    const to = b.start + ZOOM_RAMP;
+    expect(cameraAt(from, [a, b]).focusX).toBeCloseTo(0.2);
+    expect(cameraAt(to, [a, b]).focusX).toBeCloseTo(0.8);
+    expect(cameraAt(to, [a, b]).scale).toBeCloseTo(2.4);
+    const mid = cameraAt((from + to) / 2, [a, b]);
+    expect(mid.focusX).toBeCloseTo(0.5);
+    expect(mid.scale).toBeCloseTo(2.2);
+    let last = cameraAt(from, [a, b]).focusX;
+    for (let t = from; t <= to; t += 0.01) {
+      const x = cameraAt(t, [a, b]).focusX;
+      expect(x).toBeGreaterThanOrEqual(last - 1e-9);
+      expect(x - last).toBeLessThan(0.05);
+      last = x;
+    }
+  });
+
+  it("still eases in from and out to the full view at the outer edges", () => {
+    expect(cameraAt(a.start, [a, b]).scale).toBeCloseTo(1);
+    expect(cameraAt(b.end, [a, b]).scale).toBeCloseTo(1);
+    expect(cameraAt(7, [a, b]).scale).toBe(1);
+  });
+
+  it("works with touching and unsorted zooms", () => {
+    const c = { ...b, start: 3 };
+    expect(cameraAt(3, [c, a]).focusX).toBeCloseTo(0.5);
+    expect(cameraAt(3, [c, a]).scale).toBeCloseTo(2.2);
+  });
+
+  it("zooms out between zooms farther apart", () => {
+    const far = { ...b, start: 5, end: 7 };
+    expect(cameraAt(4.5, [a, far]).scale).toBe(1);
   });
 });
 

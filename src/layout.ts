@@ -93,24 +93,75 @@ export const IDLE_CAMERA: Camera = { scale: 1, focusX: 0.5, focusY: 0.5 };
 export const ZOOM_RAMP = 0.6;
 
 /**
+ * Back-to-back zooms closer than this (seconds between one's end and the
+ * next one's start) are linked: the camera glides from one to the other
+ * instead of zooming out to the full view and back in.
+ */
+export const ZOOM_LINK_GAP = 1;
+
+function rampOf(s: ZoomSegment): number {
+  return Math.min(ZOOM_RAMP, Math.max(0, s.end - s.start) / 2);
+}
+
+function targetOf(s: ZoomSegment): Camera {
+  return { scale: s.scale, focusX: s.focusX, focusY: s.focusY };
+}
+
+function mixCamera(a: Camera, b: Camera, k: number): Camera {
+  return {
+    scale: a.scale + (b.scale - a.scale) * k,
+    focusX: a.focusX + (b.focusX - a.focusX) * k,
+    focusY: a.focusY + (b.focusY - a.focusY) * k,
+  };
+}
+
+/** Whether zoom `b` (starting after `a`) is close enough to `a` to glide straight to it. */
+export function zoomsLinked(a: ZoomSegment, b: ZoomSegment): boolean {
+  const gap = b.start - a.end;
+  return gap >= 0 && gap <= ZOOM_LINK_GAP;
+}
+
+/**
  * Camera state at time `t`. Zooms ease in over the first ZOOM_RAMP seconds of
- * a segment and ease out over the last, so cuts never jump.
+ * a segment and ease out over the last, so cuts never jump. Linked zooms
+ * (see ZOOM_LINK_GAP) glide straight from one aim point to the next, from the
+ * start of the first one's ease-out to the end of the second one's ease-in.
  */
 export function cameraAt(t: number, segments: readonly ZoomSegment[]): Camera {
-  for (const s of segments) {
-    if (t < s.start || t > s.end) continue;
-    const ramp = Math.min(ZOOM_RAMP, (s.end - s.start) / 2);
-    const k =
-      ramp <= 0
-        ? 1
-        : easeInOut(Math.min(1, (t - s.start) / ramp, (s.end - t) / ramp));
-    return {
-      scale: 1 + (s.scale - 1) * k,
-      focusX: 0.5 + (s.focusX - 0.5) * k,
-      focusY: 0.5 + (s.focusY - 0.5) * k,
-    };
+  let list = segments;
+  for (let i = 1; i < list.length; i++) {
+    if (list[i].start < list[i - 1].start) {
+      list = [...segments].sort((a, b) => a.start - b.start);
+      break;
+    }
+  }
+  for (let i = 0; i < list.length; i++) {
+    const s = list[i];
+    const prev = i > 0 && zoomsLinked(list[i - 1], s) ? list[i - 1] : null;
+    const next = i < list.length - 1 && zoomsLinked(s, list[i + 1]) ? list[i + 1] : null;
+    const ramp = rampOf(s);
+    if (t >= s.start && t <= s.end) {
+      if (ramp > 0 && t < s.start + ramp) {
+        if (prev) return glide(prev, s, t);
+        return mixCamera(IDLE_CAMERA, targetOf(s), easeInOut((t - s.start) / ramp));
+      }
+      if (ramp > 0 && t > s.end - ramp) {
+        if (next) return glide(s, next, t);
+        return mixCamera(IDLE_CAMERA, targetOf(s), easeInOut((s.end - t) / ramp));
+      }
+      return targetOf(s);
+    }
+    if (next && t > s.end && t < next.start) return glide(s, next, t);
   }
   return IDLE_CAMERA;
+}
+
+/** The camera between linked zooms `a` and `b`. */
+function glide(a: ZoomSegment, b: ZoomSegment, t: number): Camera {
+  const from = a.end - rampOf(a);
+  const to = b.start + rampOf(b);
+  const k = to > from ? easeInOut((t - from) / (to - from)) : t >= to ? 1 : 0;
+  return mixCamera(targetOf(a), targetOf(b), k);
 }
 
 /**
