@@ -17,6 +17,7 @@ Panreel is a lightweight, browser-only alternative to paid screen-recording stud
 - **Try it in one click**: no recording at hand? Press *Try a sample clip* on the start screen — Panreel draws a short made-up app screencast right in your browser, then press *Auto zoom* to see what it does
 - **Record** your screen, a window or a tab straight from the browser — or open / drag-and-drop a WebM or MP4 file
 - **Style** the frame: six gradient backdrops, any solid colour, or your own image (with optional blur), plus padding, corner radius, shadow and an optional plain window title bar (light or dark)
+- **Crop** the recording: recorded the whole screen but only need one window? Slide *Left* / *Right* / *Top* / *Bottom* under *Crop* to keep just that part. Zooms, auto zoom and click-to-aim work inside the crop, blur boxes stay on the same spot of the screen, and *Show the whole video* undoes it
 - **Canvas sizes** for every platform: 16:9, 1:1, 9:16 and 4:3
 - **Look presets**: press *Save this look* to keep the backdrop, canvas size, padding, corners, shadow and window bar; next time, one click on the saved look styles a new clip the same way (up to 8 looks, kept in this browser; image backdrops are not stored)
 - **Smooth zooms**: press *Add zoom here*, click the preview to aim it, choose 1.4×–3×. Zooms ease in and out automatically, with optional motion blur while the camera moves (on by default, *Motion blur on zooms* under *Frame*)

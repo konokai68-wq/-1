@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-13 13:00 JST — crop the recording
+- New *Crop* box in the inspector: *Left* / *Right* / *Top* / *Bottom* sliders (up to 45 % each, at least 10 % of each axis kept) and *Show the whole video*. `crop.ts` (pure, tested): the layout fits the cropped view, zoom windows (and motion-blur views) are worked out inside it and moved to the crop's spot in the source; blur boxes stay in source coordinates, pixel blocks are sized on the cropped frame. Auto zoom suggestions are re-aimed inside the crop (ones aimed at a cut-off part are dropped); a new blur box lands in the middle of the crop. Saved with the project (older projects show the whole video), part of undo, every export (worker too); English / Japanese.
+- Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip cropped left 40 % / bottom 45 % → preview, 1920 × 1080 PNG and 1080p60 MP4 (480 frames) show just the top-right with the share menu; undo / redo, reload → Resume keep the crop, reset clears it; no page errors. Tests: 216 passing.
+- Next: drag the crop on the preview, cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-13 09:00 JST — save a frame as PNG
 - *Export → Save frame as PNG* (or <kbd>P</kbd>) draws the frame under the playhead at the export size with the same `drawFrame` as the video (backdrop, zoom, camera bubble, text, blur boxes; no preview outlines, no motion blur) and downloads it as `panreel-frame-0m02.0s.png` (`stillFileName` in `still.ts`, pure and tested). Added to the shortcut sheet; English / Japanese.
 - Checked in headless Chromium (`en-US` button, `ja-JP` P key): sample clip at 2 s → 1920 × 1080 PNG with the open share menu, toast in each language; no page errors. Tests: 202 passing.
