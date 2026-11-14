@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-14 13:00 JST — zoom speed
+- New *Frame → Zoom speed: Slow / Normal / Fast* (ease in / out over 1 s / 0.6 s / 0.35 s; Normal is the old behaviour). `ZOOM_RAMPS` / `rampFor` / `rampOf` in `layout.ts`; `cameraAt`, `blurWindows`, `viewWindows` and `rippleAt` take the ramp, so linked glides, motion blur, click ripples and every export (worker too, via `Style.zoomSpeed`) follow. Saved with the project (older or broken projects get Normal); English / Japanese.
+- Checked in headless Chromium (`en-US`, `ja-JP`): sample clip, zoom at 1 s → 0.2 s into the zoom the preview is closest to the settled frame with Fast and farthest with Slow, identical once settled; reload → Resume keeps Fast; no page errors. Tests: 240 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-14 09:00 JST — linked zooms glide
 - Zooms less than 1 s apart (`ZOOM_LINK_GAP`) are now linked: `cameraAt` glides from one zoom's aim point and scale to the next, from the first one's ease-out to the second one's ease-in, instead of zooming out to the full view and back in. Outer edges still ease from / to the full view; zooms farther apart behave as before. Motion blur, ripples and every export use the same camera. `zoomsLinked` / `cameraAt` in `layout.ts` (pure, tested: no dip in scale, continuous, monotonic glide, touching and unsorted zooms).
 - Checked in headless Chromium (`en-US`, `ja-JP`): sample clip, zooms at 0.5 s and 4.0 s (0.5 s gap) → the preview stays zoomed through the gap (diff vs full view 32 at 3.75 s, same as inside the zooms) and returns to the full view after 7 s; no page errors. Tests: 233 passing.
