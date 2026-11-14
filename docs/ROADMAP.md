@@ -42,6 +42,7 @@ Everything runs locally; no server, no account.
 - [x] Click ripple on zooms: a ring grows and fades at each zoom's aim point once the camera arrives, so viewers see where the "click" landed (off by default, saved with the project, in every export) (`ripples.ts`)
 - [x] Linked zooms: zooms less than 1 s apart glide straight from one aim point to the next (no zoom-out in between; motion blur and every export follow) (`zoomsLinked` / `cameraAt` in `layout.ts`)
 - [x] Zoom speed: Slow / Normal / Fast ease length (1 s / 0.6 s / 0.35 s) for every zoom, linked glides and click ripples follow; saved with the project, in every export (`ZOOM_RAMPS` / `rampFor` in `layout.ts`)
+- [x] Fade in / out: the finished video starts from black and ends on black (Off / 0.5 s / 1 s on the output timeline, so cuts and speed-ups count; never more than half the clip; shown in the preview while playing; saved with the project, in every export) (`fades.ts`)
 - [ ] Optional cursor highlight when recording this browser tab
 - [x] Save / load projects locally (IndexedDB autosave of the last project, *Resume last project* / *Discard* on the start screen)
 

@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-14 22:00 JST — fade in / out
+- New *Frame → Fade in / out: Off / 0.5 s / 1 s*: the finished video starts from black and ends on black. `fadeAlpha` in `fades.ts` (pure, tested) works on the output timeline (`toOutputTime` / `keptDuration`), so cuts and speed-ups count, eases with smoothstep and never takes more than half a short clip; `drawFade` darkens the frame after `drawFrame` in the page export, GIF, `?export=worker` and the real-time path. The preview shows it only while playing, so a paused edit never looks black; PNG stills skip it. Saved with the project (older or broken projects get Off); English / Japanese.
+- Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): sample clip, 1 s fade → 8.00 s MP4, mean brightness 6.6 at 0 s, 91 at 0.5 s, 183 from 2 s on, 1.1 on the last frame; reload → Resume keeps 1 s; no page errors. Tests: 248 passing.
+- Next: fade the sound with the picture, cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-14 18:00 JST — silent export
 - New *Export → Include the recording's sound* check (on by default). Off: the fast export discards the audio track (Mediabunny `audio: { discard: true }`, page and `?export=worker`), the real-time fallback records no audio track, and the preview is muted (sped-up parts stay muted either way). A silent clip can use MP4 even where the browser has no AAC encoder. Hidden for GIF. Saved with the project (older or broken projects keep sound on); English / Japanese.
 - Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): 4 s clip with a 440 Hz tone → sound on: WebM VP9 + Opus; sound off: MP4 H.264 with no audio stream (ffprobe), preview muted; reload → Resume keeps it off; no page errors. Tests: 241 passing.
