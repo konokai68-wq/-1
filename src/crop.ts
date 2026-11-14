@@ -1,5 +1,5 @@
 import { blurWindows } from "./motionBlur";
-import { cameraAt, clamp, sourceWindow, type Rect, type Size, type ZoomSegment } from "./layout";
+import { ZOOM_RAMP, cameraAt, clamp, sourceWindow, type Rect, type Size, type ZoomSegment } from "./layout";
 
 /**
  * Cropping the recording: keep only part of the source video (for example one
@@ -85,9 +85,9 @@ export function viewSize(source: Size, c: Crop): Size {
  * to where that view sits in the source. With motion blur there can be
  * several (oldest first); the last is the frame's own window.
  */
-export function viewWindows(source: Size, c: Crop, zooms: readonly ZoomSegment[], time: number, outputWidth: number, motionBlur: boolean): Rect[] {
+export function viewWindows(source: Size, c: Crop, zooms: readonly ZoomSegment[], time: number, outputWidth: number, motionBlur: boolean, ramp: number = ZOOM_RAMP): Rect[] {
   const view = viewSize(source, c);
-  const wins = motionBlur ? blurWindows(view, zooms, time, outputWidth) : [sourceWindow(view, cameraAt(time, zooms))];
+  const wins = motionBlur ? blurWindows(view, zooms, time, outputWidth, ramp) : [sourceWindow(view, cameraAt(time, zooms, ramp))];
   const off = cropPixels(source, c);
   return wins.map((w) => ({ x: w.x + off.x, y: w.y + off.y, width: w.width, height: w.height }));
 }

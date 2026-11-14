@@ -13,6 +13,7 @@ const good: ProjectData = {
   chrome: "dark",
   motionBlur: false,
   clickRipple: true,
+  zoomSpeed: "fast",
   crop: { x: 0.1, y: 0, width: 0.8, height: 0.9 },
   backdrop: { kind: "solid", color: "#112233" },
   bubble: { visible: false, shape: "rounded", size: 0.3, corner: "tl", mirror: false },
@@ -41,6 +42,13 @@ describe("sanitizeProject", () => {
     const { clickRipple: _, ...old } = good;
     expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.clickRipple).toBe(false);
     expect(sanitizeProject({ ...good, clickRipple: "yes" }, defaults)?.clickRipple).toBe(false);
+  });
+
+  it("keeps the zoom speed, and uses Normal for older or broken projects", () => {
+    expect(sanitizeProject(good, defaults)?.zoomSpeed).toBe("fast");
+    const { zoomSpeed: _, ...old } = good;
+    expect(sanitizeProject(JSON.parse(JSON.stringify(old)), defaults)?.zoomSpeed).toBe("normal");
+    expect(sanitizeProject({ ...good, zoomSpeed: "warp" }, defaults)?.zoomSpeed).toBe("normal");
   });
 
   it("keeps the crop, and shows the whole video for older or broken projects", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ZOOM_RAMP } from "./layout";
+import { ZOOM_RAMP, ZOOM_RAMPS } from "./layout";
 import { RIPPLE_LENGTH, rippleAt, rippleShape, rippleStart } from "./ripples";
 
 const zoom = { start: 1, end: 4, scale: 2, focusX: 0.3, focusY: 0.7 };
@@ -8,6 +8,12 @@ describe("ripples", () => {
   it("starts once the zoom has eased in", () => {
     expect(rippleStart(zoom)).toBeCloseTo(1 + ZOOM_RAMP);
     expect(rippleStart({ ...zoom, end: 1.6 })).toBeCloseTo(1.3);
+  });
+
+  it("follows the zoom speed", () => {
+    expect(rippleStart(zoom, ZOOM_RAMPS.fast)).toBeCloseTo(1 + ZOOM_RAMPS.fast);
+    expect(rippleAt([zoom], 1 + ZOOM_RAMPS.fast + 0.01, ZOOM_RAMPS.fast)).not.toBeNull();
+    expect(rippleAt([zoom], 1 + ZOOM_RAMPS.fast + 0.01)).toBeNull();
   });
 
   it("shows at the aim point for RIPPLE_LENGTH seconds", () => {

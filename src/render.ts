@@ -1,6 +1,6 @@
 import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cropPixels, viewSize, viewWindows, type Crop } from "./crop";
-import { coverRect, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment } from "./layout";
+import { coverRect, rampFor, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment, type ZoomSpeed } from "./layout";
 import { SPOTLIGHT_DIM, drawOrder, maskRect, maskShown, pixelBlock, type Mask } from "./masks";
 import { RIPPLE_RADIUS, rippleAt, rippleShape } from "./ripples";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
@@ -69,6 +69,8 @@ export interface Style {
   crop: Crop;
   /** A ring that grows and fades at each zoom's aim point once the camera arrives. */
   clickRipple: boolean;
+  /** How quickly zooms ease in and out (see ZOOM_RAMPS). */
+  zoomSpeed: ZoomSpeed;
 }
 
 /** A webcam picture to draw as a bubble over the frame. */
@@ -110,7 +112,8 @@ export function drawFrame(
   roundRect(ctx, frame.x, frame.y, frame.width, frame.height, r);
   ctx.clip();
   if (source && sourceSize.width > 0) {
-    const wins = viewWindows(sourceSize, style.crop, zooms, time, content.width, style.motionBlur);
+    const ramp = rampFor(style.zoomSpeed);
+    const wins = viewWindows(sourceSize, style.crop, zooms, time, content.width, style.motionBlur, ramp);
     // Equal-weight average: view k goes on at 1/(k+1) over the views before it.
     wins.forEach((w, k) => {
       ctx.globalAlpha = 1 / (k + 1);
@@ -119,7 +122,7 @@ export function drawFrame(
     ctx.globalAlpha = 1;
     const shown = masks.filter((m) => maskShown(m, time));
     if (shown.length) drawMasks(ctx, source, sourceSize, wins, content, shown, style.crop);
-    if (style.clickRipple) drawRipple(ctx, sourceSize, style.crop, wins[wins.length - 1], content, zooms, time);
+    if (style.clickRipple) drawRipple(ctx, sourceSize, style.crop, wins[wins.length - 1], content, zooms, time, ramp);
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.12)";
     ctx.fillRect(content.x, content.y, content.width, content.height);
@@ -132,8 +135,8 @@ export function drawFrame(
 }
 
 /** The click ripple at `time`, if any: a soft disc and a ring with a dark edge so it shows on light and dark screens. */
-function drawRipple(ctx: Ctx2D, sourceSize: Size, crop: Crop, win: Rect, content: Rect, zooms: readonly ZoomSegment[], time: number): void {
-  const rip = rippleAt(zooms, time);
+function drawRipple(ctx: Ctx2D, sourceSize: Size, crop: Crop, win: Rect, content: Rect, zooms: readonly ZoomSegment[], time: number, ramp: number): void {
+  const rip = rippleAt(zooms, time, ramp);
   if (!rip) return;
   const view = viewSize(sourceSize, crop);
   const off = cropPixels(sourceSize, crop);

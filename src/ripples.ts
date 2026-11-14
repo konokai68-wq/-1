@@ -1,4 +1,4 @@
-import { ZOOM_RAMP, clamp, type ZoomSegment } from "./layout";
+import { ZOOM_RAMP, clamp, rampOf, type ZoomSegment } from "./layout";
 
 /**
  * Click ripples: a ring that grows and fades at a zoom's aim point once the
@@ -20,14 +20,14 @@ export interface Ripple {
 }
 
 /** When the ripple of zoom `z` starts: as soon as the zoom has eased in. */
-export function rippleStart(z: ZoomSegment): number {
-  return z.start + Math.min(ZOOM_RAMP, (z.end - z.start) / 2);
+export function rippleStart(z: ZoomSegment, ramp: number = ZOOM_RAMP): number {
+  return z.start + rampOf(z, ramp);
 }
 
 /** The ripple showing at `time`, or null. A ripple never outlives its zoom. */
-export function rippleAt(zooms: readonly ZoomSegment[], time: number): Ripple | null {
+export function rippleAt(zooms: readonly ZoomSegment[], time: number, ramp: number = ZOOM_RAMP): Ripple | null {
   for (const z of zooms) {
-    const t0 = rippleStart(z);
+    const t0 = rippleStart(z, ramp);
     const t1 = Math.min(t0 + RIPPLE_LENGTH, z.end);
     if (time < t0 || time >= t1) continue;
     return { x: z.focusX, y: z.focusY, progress: (time - t0) / RIPPLE_LENGTH };

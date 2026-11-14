@@ -1,4 +1,4 @@
-import { cameraAt, sourceWindow, type Rect, type Size, type ZoomSegment } from "./layout";
+import { ZOOM_RAMP, cameraAt, sourceWindow, type Rect, type Size, type ZoomSegment } from "./layout";
 
 /**
  * Motion blur for zooms: while the camera moves, a frame is the average of a
@@ -20,18 +20,19 @@ const PX_PER_SAMPLE = 3;
  * The source windows to average for the frame at `time`, oldest first, the
  * last one being the frame's own window. `outputWidth` is how wide the
  * recording is drawn on the canvas, which sets how big a movement looks.
- * Returns just the current window when the camera is still.
+ * Returns just the current window when the camera is still. `ramp` is the
+ * zoom ease length (see `cameraAt`).
  */
-export function blurWindows(video: Size, zooms: readonly ZoomSegment[], time: number, outputWidth: number): Rect[] {
-  const now = sourceWindow(video, cameraAt(time, zooms));
+export function blurWindows(video: Size, zooms: readonly ZoomSegment[], time: number, outputWidth: number, ramp: number = ZOOM_RAMP): Rect[] {
+  const now = sourceWindow(video, cameraAt(time, zooms, ramp));
   if (!zooms.length || video.width <= 0 || outputWidth <= 0) return [now];
-  const before = sourceWindow(video, cameraAt(time - BLUR_SHUTTER, zooms));
+  const before = sourceWindow(video, cameraAt(time - BLUR_SHUTTER, zooms, ramp));
   const move = windowMovePx(before, now, outputWidth);
   if (move < MIN_MOVE_PX) return [now];
   const n = Math.min(MAX_BLUR_SAMPLES, 1 + Math.ceil(move / PX_PER_SAMPLE));
   const out: Rect[] = [];
   for (let k = 0; k < n - 1; k++) {
-    out.push(sourceWindow(video, cameraAt(time - BLUR_SHUTTER * (1 - k / (n - 1)), zooms)));
+    out.push(sourceWindow(video, cameraAt(time - BLUR_SHUTTER * (1 - k / (n - 1)), zooms, ramp)));
   }
   out.push(now);
   return out;

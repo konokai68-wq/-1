@@ -1,7 +1,7 @@
 import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { etaTracker, withLeft } from "./eta";
-import { WINDOW_CHROMES, windowLayout, type WindowChrome, type ZoomSegment } from "./layout";
+import { WINDOW_CHROMES, ZOOM_SPEEDS, windowLayout, type WindowChrome, type ZoomSegment, type ZoomSpeed } from "./layout";
 import { CROP_EDGES, FULL_CROP, cropEdges, cropFromPoints, cropPixels, isFullCrop, sameCrop, setCropEdge, viewCenter, viewSize, viewWindows, zoomsIntoView, type Crop } from "./crop";
 import { stillFileName } from "./still";
 import { download, exportCanvas, loadVideo, recordScreen, type ExportJob, type Recording } from "./media";
@@ -127,7 +127,7 @@ const resumeBtn = $<HTMLButtonElement>("resumeBtn");
 const discardBtn = $<HTMLButtonElement>("discardBtn");
 const resumeInfo = $("resumeInfo");
 
-const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true, clickRipple: false, crop: { ...FULL_CROP } };
+const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true, clickRipple: false, zoomSpeed: "normal", crop: { ...FULL_CROP } };
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
@@ -408,6 +408,17 @@ clickRippleInput.addEventListener("change", () => (style.clickRipple = clickRipp
 function applyClickRipple(on: boolean) {
   style.clickRipple = on;
   clickRippleInput.checked = on;
+}
+
+const zoomSpeedGroup = $("zoomSpeed");
+for (const sp of ZOOM_SPEEDS) {
+  const label = { slow: "Slow", normal: "Normal", fast: "Fast" }[sp];
+  radio(zoomSpeedGroup, "zoomSpeed", sp, label, sp === style.zoomSpeed, () => (style.zoomSpeed = sp), `zoomSpeed.${sp}`);
+}
+
+function applyZoomSpeed(sp: ZoomSpeed) {
+  style.zoomSpeed = sp;
+  zoomSpeedGroup.querySelectorAll<HTMLInputElement>("input").forEach((i) => (i.checked = i.value === sp));
 }
 
 // ---- Crop ----------------------------------------------------------------------
@@ -2068,6 +2079,7 @@ function projectData(): ProjectData {
     chrome: style.chrome,
     motionBlur: style.motionBlur,
     clickRipple: style.clickRipple,
+    zoomSpeed: style.zoomSpeed,
     crop: s.crop,
     backdrop: savedBackdrop(),
     bubble: { ...bubble },
@@ -2155,6 +2167,7 @@ async function resume() {
   applyChrome(p.chrome);
   applyMotionBlur(p.motionBlur);
   applyClickRipple(p.clickRipple);
+  applyZoomSpeed(p.zoomSpeed);
   restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame, crop: p.crop });
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;

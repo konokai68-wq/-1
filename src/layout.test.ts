@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraAt, coverRect, zoomsLinked, ZOOM_LINK_GAP, easeInOut, fitFrame, sourceWindow, windowLayout, WINDOW_BAR, ZOOM_RAMP } from "./layout";
+import { ZOOM_RAMPS, cameraAt, coverRect, rampFor, rampOf, zoomsLinked, ZOOM_LINK_GAP, easeInOut, fitFrame, sourceWindow, windowLayout, WINDOW_BAR, ZOOM_RAMP } from "./layout";
 
 describe("fitFrame", () => {
   it("centers a 16:9 video inside a 16:9 canvas with padding", () => {
@@ -190,5 +190,45 @@ describe("windowLayout", () => {
   it("falls back to fitFrame for an empty video", () => {
     const l = windowLayout(canvas, { width: 0, height: 0 }, 0.1, "dark");
     expect(l.bar).toBeNull();
+  });
+});
+
+describe("zoom speed", () => {
+  const seg = { start: 2, end: 8, scale: 2, focusX: 0.8, focusY: 0.2 };
+
+  it("maps each speed to an ease length, Normal for anything unknown", () => {
+    expect(rampFor("normal")).toBe(ZOOM_RAMP);
+    expect(rampFor("slow")).toBeGreaterThan(ZOOM_RAMP);
+    expect(rampFor("fast")).toBeLessThan(ZOOM_RAMP);
+    expect(rampFor(undefined)).toBe(ZOOM_RAMP);
+    expect(rampFor("toString" as never)).toBe(ZOOM_RAMP);
+  });
+
+  it("keeps the ease within half of a short zoom", () => {
+    expect(rampOf(seg, ZOOM_RAMPS.slow)).toBe(ZOOM_RAMPS.slow);
+    expect(rampOf({ ...seg, end: 3 }, ZOOM_RAMPS.slow)).toBeCloseTo(0.5);
+  });
+
+  it("arrives sooner when fast and later when slow", () => {
+    const t = 2 + ZOOM_RAMPS.fast + 0.01;
+    expect(cameraAt(t, [seg], ZOOM_RAMPS.fast).scale).toBeCloseTo(2);
+    expect(cameraAt(t, [seg]).scale).toBeLessThan(2);
+    expect(cameraAt(2 + ZOOM_RAMP + 0.01, [seg], ZOOM_RAMPS.slow).scale).toBeLessThan(2);
+    expect(cameraAt(2 + ZOOM_RAMPS.slow + 0.01, [seg], ZOOM_RAMPS.slow).scale).toBeCloseTo(2);
+  });
+
+  it("starts and ends at the full view at every speed", () => {
+    for (const r of Object.values(ZOOM_RAMPS)) {
+      expect(cameraAt(2, [seg], r).scale).toBeCloseTo(1);
+      expect(cameraAt(8, [seg], r).scale).toBeCloseTo(1);
+    }
+  });
+
+  it("uses the same speed for linked glides", () => {
+    const a = { start: 1, end: 3, scale: 2, focusX: 0.2, focusY: 0.5 };
+    const b = { start: 3.5, end: 6, scale: 2, focusX: 0.8, focusY: 0.5 };
+    const r = ZOOM_RAMPS.fast;
+    expect(cameraAt(a.end - r, [a, b], r).focusX).toBeCloseTo(0.2);
+    expect(cameraAt(b.start + r, [a, b], r).focusX).toBeCloseTo(0.8);
   });
 });
