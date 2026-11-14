@@ -24,6 +24,7 @@ Everything runs locally; no server, no account.
 - [x] Save the frame under the playhead as a PNG at the export size (button and <kbd>P</kbd>; thumbnails) (`still.ts`)
 - [x] Export resolution (720p / 1080p / 1440p / 4K) and frame-rate (30 / 60 fps) options
 - [x] Undo / redo (zooms, trim, frame sliders); keyboard shortcuts with a `?` help sheet
+- [x] Silent export: *Include the recording's sound* (on by default) drops the soundtrack from MP4 / WebM exports (page, worker and real-time paths) and mutes the preview; saved with the project
 
 ## Phase 3 — Studio features
 - [x] Webcam bubble (record camera alongside the screen or add a camera clip; circle / rounded, size, corner, mirror; drag on the preview)

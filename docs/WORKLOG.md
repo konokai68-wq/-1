@@ -2,6 +2,11 @@
 
 Newest first. One short entry per working session.
 
+## 2026-11-14 18:00 JST — silent export
+- New *Export → Include the recording's sound* check (on by default). Off: the fast export discards the audio track (Mediabunny `audio: { discard: true }`, page and `?export=worker`), the real-time fallback records no audio track, and the preview is muted (sped-up parts stay muted either way). A silent clip can use MP4 even where the browser has no AAC encoder. Hidden for GIF. Saved with the project (older or broken projects keep sound on); English / Japanese.
+- Checked in headless Chromium (`en-US` page export, `ja-JP` with `?export=worker`): 4 s clip with a 440 Hz tone → sound on: WebM VP9 + Opus; sound off: MP4 H.264 with no audio stream (ffprobe), preview muted; reload → Resume keeps it off; no page errors. Tests: 241 passing.
+- Next: cursor highlight, or measure the export worker on a real machine.
+
 ## 2026-11-14 13:00 JST — zoom speed
 - New *Frame → Zoom speed: Slow / Normal / Fast* (ease in / out over 1 s / 0.6 s / 0.35 s; Normal is the old behaviour). `ZOOM_RAMPS` / `rampFor` / `rampOf` in `layout.ts`; `cameraAt`, `blurWindows`, `viewWindows` and `rippleAt` take the ramp, so linked glides, motion blur, click ripples and every export (worker too, via `Style.zoomSpeed`) follow. Saved with the project (older or broken projects get Normal); English / Japanese.
 - Checked in headless Chromium (`en-US`, `ja-JP`): sample clip, zoom at 1 s → 0.2 s into the zoom the preview is closest to the settled frame with Fast and farthest with Slow, identical once settled; reload → Resume keeps Fast; no page errors. Tests: 240 passing.
