@@ -27,6 +27,8 @@ export interface ProjectData {
   clickRipple: boolean;
   /** How quickly zooms ease in and out; *Normal* when missing (projects saved before it existed). */
   zoomSpeed: ZoomSpeed;
+  /** Keep the recording's sound in video exports and preview; on when missing (projects saved before it existed). */
+  sound: boolean;
   /** Part of the source shown; the whole video when missing (projects saved before it existed). */
   crop: Crop;
   backdrop: SavedBackdrop;
@@ -97,6 +99,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
   const motionBlur = typeof raw.motionBlur === "boolean" ? raw.motionBlur : true;
   const clickRipple = raw.clickRipple === true;
   const zoomSpeed = ZOOM_SPEEDS.includes(raw.zoomSpeed as ZoomSpeed) ? (raw.zoomSpeed as ZoomSpeed) : "normal";
+  const sound = typeof raw.sound === "boolean" ? raw.sound : true;
   const crop = sanitizeCrop(raw.crop);
 
   const b = isObj(raw.backdrop) ? raw.backdrop : {};
@@ -151,7 +154,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
     return time ? { ...box, time } : box;
   }).slice(0, MAX_MASKS);
 
-  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, motionBlur, clickRipple, zoomSpeed, crop, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
+  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, motionBlur, clickRipple, zoomSpeed, sound, crop, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
 }
 
 /** "3 zooms · 1 cut · 2 texts · 1 blur box", or "" when nothing has been added yet. */

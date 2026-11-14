@@ -40,6 +40,7 @@ scope.onmessage = async (e) => {
       cuts: msg.cuts,
       speeds: msg.speeds,
       frameRate: msg.frameRate,
+      sound: msg.sound !== false,
       draw: async (ctx, frame, frameSize, time) => {
         const f = cam ? await cam.at(time) : null;
         drawFrame(ctx, frame, frameSize, style, zooms, time, f ? { ...f, bubble } : null, texts, masks);

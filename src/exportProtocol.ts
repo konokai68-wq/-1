@@ -22,6 +22,8 @@ export interface ExportRequest {
   cuts: Span[];
   speeds: SpeedSpan[];
   frameRate: number;
+  /** Keep the source's soundtrack. */
+  sound: boolean;
   /** An image backdrop carries an ImageBitmap. */
   style: Style;
   zooms: ZoomSegment[];

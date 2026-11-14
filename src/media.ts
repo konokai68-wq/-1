@@ -119,9 +119,10 @@ export function exportCanvas(
   onFrame: () => void,
   onProgress: (fraction: number) => void,
   frameRate = 60,
+  sound = true,
 ): ExportJob {
   const stream = canvas.captureStream(frameRate);
-  const audio = captureAudio(video);
+  const audio = sound ? captureAudio(video) : null;
   audio?.getAudioTracks().forEach((t) => stream.addTrack(t));
 
   const mimeType = pickMimeType();

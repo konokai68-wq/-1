@@ -365,10 +365,23 @@ function outputSize() {
   return exportSize({ width: canvas.width, height: canvas.height }, resolutionById(settings.resolution).short);
 }
 
+// The recording's sound: kept in video exports (and heard in the preview) unless turned off.
+let sound = true;
+const soundInput = $<HTMLInputElement>("sound");
+const soundRow = $("soundRow");
+soundInput.addEventListener("change", () => applySound(soundInput.checked));
+
+function applySound(on: boolean) {
+  sound = on;
+  soundInput.checked = on;
+  video.muted = !on || video.playbackRate !== 1;
+}
+
 function updateExportInfo() {
   const gif = settings.format === "gif";
   resolutionGroup.hidden = gif;
   frameRateGroup.hidden = gif;
+  soundRow.hidden = gif;
   if (!exporting) exportBtn.textContent = t(gif ? "export.gif" : "export.video");
   if (gif) {
     const g = gifSize({ width: canvas.width, height: canvas.height });
@@ -812,6 +825,7 @@ async function open(blob: Blob, camera: Blob | null = null, name = "Untitled"): 
   autoZoomJob?.cancel();
   try {
     await loadVideo(video, blob);
+    video.muted = !sound;
     sourceBlob = blob;
     sourceName = name;
     mediaVersion++;
@@ -1236,7 +1250,7 @@ function syncTransport() {
   const rate = rateAt(speeds, video.currentTime);
   if (video.playbackRate !== rate) {
     video.playbackRate = rate;
-    video.muted = rate !== 1;
+    video.muted = rate !== 1 || !sound;
     renderSpeedUi();
   }
   const active = zoomIndexAt(zooms, video.currentTime);
@@ -1858,6 +1872,7 @@ exportBtn.addEventListener("click", async () => {
       render,
       progressToast((pct) => t("msg.realtime", { pct })),
       settings.frameRate,
+      sound,
     );
     result = { blob: await exporting.done, ext: "webm" };
     canvas.width = preview.width;
@@ -1963,7 +1978,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
   // Loaded on demand so the encoder library doesn't slow down the first page load.
   const { detectFastExport, exportFast } = await import("./fastExport");
   const size = outputSize();
-  const plan = await detectFastExport(sourceBlob, size);
+  const plan = await detectFastExport(sourceBlob, size, sound);
   if (!plan) return null;
   const started = performance.now();
   const onProgress = progressToast((pct) => t("msg.progress", { ext: plan.container.toUpperCase(), pct }));
@@ -1980,6 +1995,7 @@ async function exportFastPath(): Promise<{ blob: Blob | null; ext: string } | nu
     cuts,
     speeds,
     frameRate: settings.frameRate,
+    sound,
     draw: await styledDraw(),
     onProgress,
   });
@@ -2031,6 +2047,7 @@ async function exportFastInWorker(
         cuts: cuts.map((c) => ({ ...c })),
         speeds: speeds.map((s) => ({ ...s })),
         frameRate: settings.frameRate,
+        sound,
         style: workerStyle,
         zooms: zooms.map((z) => ({ ...z })),
         bubble: { ...bubble },
@@ -2080,6 +2097,7 @@ function projectData(): ProjectData {
     motionBlur: style.motionBlur,
     clickRipple: style.clickRipple,
     zoomSpeed: style.zoomSpeed,
+    sound,
     crop: s.crop,
     backdrop: savedBackdrop(),
     bubble: { ...bubble },
@@ -2168,6 +2186,7 @@ async function resume() {
   applyMotionBlur(p.motionBlur);
   applyClickRipple(p.clickRipple);
   applyZoomSpeed(p.zoomSpeed);
+  applySound(p.sound);
   restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame, crop: p.crop });
   // Re-saving the same Blobs is wasted work: they are already stored.
   savedMediaVersion = mediaVersion;

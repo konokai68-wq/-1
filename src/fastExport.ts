@@ -114,11 +114,11 @@ function openInput(source: Blob): Input {
 }
 
 /** Work out what this browser can export for `source`, or null if WebCodecs can't do it. */
-export async function detectFastExport(source: Blob, size: Size): Promise<OutputPlan | null> {
+export async function detectFastExport(source: Blob, size: Size, sound = true): Promise<OutputPlan | null> {
   if (typeof VideoEncoder === "undefined" || typeof VideoDecoder === "undefined") return null;
   const input = openInput(source);
   try {
-    const hasAudio = (await input.getPrimaryAudioTrack()) !== null;
+    const hasAudio = sound && (await input.getPrimaryAudioTrack()) !== null;
     const video: VideoCodec[] = [];
     for (const codec of ["avc", "vp9", "vp8", "av1"] as const) {
       if (await canEncodeVideo(codec, { width: size.width, height: size.height }).catch(() => false)) video.push(codec);
@@ -145,6 +145,8 @@ export interface FastExportOptions {
   /** Parts of the source to play faster (source timeline). */
   speeds: readonly SpeedSpan[];
   frameRate: number;
+  /** Keep the source's soundtrack; false leaves the file silent. */
+  sound: boolean;
   /** Draw one styled frame for `time` (seconds on the source timeline). */
   draw: (ctx: Ctx2D, frame: CanvasImageSource, frameSize: Size, time: number) => void | Promise<void>;
   onProgress: (fraction: number) => void;
@@ -208,10 +210,12 @@ export function exportFast(opts: FastExportOptions): FastExportJob {
           return canvas;
         },
       },
-      audio: {
-        codec: mp4 ? "aac" : "opus",
-        ...(edited ? { forceTranscode: true, process: retimeAudio(opts.range, cuts, speeds) } : {}),
-      },
+      audio: opts.sound
+        ? {
+            codec: mp4 ? "aac" : "opus",
+            ...(edited ? { forceTranscode: true, process: retimeAudio(opts.range, cuts, speeds) } : {}),
+          }
+        : { discard: true },
     });
     if (!conversion.isValid) throw new Error("This video can't be converted in this browser.");
     conversion.onProgress = (p) => opts.onProgress(p);
