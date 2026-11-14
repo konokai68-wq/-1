@@ -1,6 +1,7 @@
 import type { Bubble, BubbleShape, Corner } from "./camera";
 import { SPEED_RATES, type Span, type SpeedSpan } from "./cuts";
 import { sanitizeCrop, type Crop } from "./crop";
+import { FADE_LENGTHS, type FadeLength } from "./fades";
 import { WINDOW_CHROMES, ZOOM_SPEEDS, type WindowChrome, type ZoomSegment, type ZoomSpeed } from "./layout";
 import { MASK_LOOKS, MAX_MASKS, clampMask, type Mask, type MaskLook } from "./masks";
 import type { TextLook, TextNote } from "./texts";
@@ -27,6 +28,8 @@ export interface ProjectData {
   clickRipple: boolean;
   /** How quickly zooms ease in and out; *Normal* when missing (projects saved before it existed). */
   zoomSpeed: ZoomSpeed;
+  /** Fade in / out at the clip's edges; off when missing (projects saved before it existed). */
+  fade: FadeLength;
   /** Keep the recording's sound in video exports and preview; on when missing (projects saved before it existed). */
   sound: boolean;
   /** Part of the source shown; the whole video when missing (projects saved before it existed). */
@@ -99,6 +102,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
   const motionBlur = typeof raw.motionBlur === "boolean" ? raw.motionBlur : true;
   const clickRipple = raw.clickRipple === true;
   const zoomSpeed = ZOOM_SPEEDS.includes(raw.zoomSpeed as ZoomSpeed) ? (raw.zoomSpeed as ZoomSpeed) : "normal";
+  const fade = FADE_LENGTHS.includes(raw.fade as FadeLength) ? (raw.fade as FadeLength) : "off";
   const sound = typeof raw.sound === "boolean" ? raw.sound : true;
   const crop = sanitizeCrop(raw.crop);
 
@@ -154,7 +158,7 @@ export function sanitizeProject(raw: unknown, defaults: { aspect: string; bubble
     return time ? { ...box, time } : box;
   }).slice(0, MAX_MASKS);
 
-  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, motionBlur, clickRipple, zoomSpeed, sound, crop, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
+  return { version: PROJECT_VERSION, name, duration, aspect, frame, chrome, motionBlur, clickRipple, zoomSpeed, fade, sound, crop, backdrop, bubble, zooms, trim, cuts, speeds, texts, masks };
 }
 
 /** "3 zooms · 1 cut · 2 texts · 1 blur box", or "" when nothing has been added yet. */

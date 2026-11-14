@@ -2,6 +2,7 @@ import { bubbleRadius, bubbleRect, squareCrop, type Bubble } from "./camera";
 import { cropPixels, viewSize, viewWindows, type Crop } from "./crop";
 import { coverRect, rampFor, windowLayout, type Rect, type Size, type WindowChrome, type ZoomSegment, type ZoomSpeed } from "./layout";
 import { SPOTLIGHT_DIM, drawOrder, maskRect, maskShown, pixelBlock, type Mask } from "./masks";
+import type { FadeLength } from "./fades";
 import { RIPPLE_RADIUS, rippleAt, rippleShape } from "./ripples";
 import { TEXT_LOOKS, arrowGeometry, layoutText, textIndexAt, textOpacity, type ArrowGeometry, type TextNote } from "./texts";
 
@@ -71,6 +72,8 @@ export interface Style {
   clickRipple: boolean;
   /** How quickly zooms ease in and out (see ZOOM_RAMPS). */
   zoomSpeed: ZoomSpeed;
+  /** Fade in from / out to black at the clip's edges; applied by the callers with drawFade. */
+  fade: FadeLength;
 }
 
 /** A webcam picture to draw as a bubble over the frame. */

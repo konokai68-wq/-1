@@ -1,6 +1,7 @@
 import "./style.css";
 import { LANG_NAMES, initLang, lang, onLangChange, setLang, t, tOr } from "./i18n";
 import { etaTracker, withLeft } from "./eta";
+import { FADE_LENGTHS, drawFade, fadeAlpha, type FadeLength } from "./fades";
 import { WINDOW_CHROMES, ZOOM_SPEEDS, windowLayout, type WindowChrome, type ZoomSegment, type ZoomSpeed } from "./layout";
 import { CROP_EDGES, FULL_CROP, cropEdges, cropFromPoints, cropPixels, isFullCrop, sameCrop, setCropEdge, viewCenter, viewSize, viewWindows, zoomsIntoView, type Crop } from "./crop";
 import { stillFileName } from "./still";
@@ -127,7 +128,7 @@ const resumeBtn = $<HTMLButtonElement>("resumeBtn");
 const discardBtn = $<HTMLButtonElement>("discardBtn");
 const resumeInfo = $("resumeInfo");
 
-const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true, clickRipple: false, zoomSpeed: "normal", crop: { ...FULL_CROP } };
+const style: Style = { backdrop: BACKDROPS[0], padding: 0.08, radius: 0.025, shadow: 0.6, chrome: "none", motionBlur: true, clickRipple: false, zoomSpeed: "normal", fade: "off", crop: { ...FULL_CROP } };
 let zooms: ZoomSegment[] = [];
 let trim: Trim = fullTrim(0);
 let cuts: Span[] = [];
@@ -171,6 +172,8 @@ function render() {
     texts,
     masks,
   );
+  // Fades only show while playing (and in the real-time export), so a paused edit never looks black.
+  if (hasVideo && (exporting || !video.paused)) drawFade(ctx, fadeAlpha(style.fade, trim, cuts, speeds, video.currentTime));
   if (hasVideo && !exporting && masks.length) drawMaskOutlines();
 }
 
@@ -427,6 +430,17 @@ const zoomSpeedGroup = $("zoomSpeed");
 for (const sp of ZOOM_SPEEDS) {
   const label = { slow: "Slow", normal: "Normal", fast: "Fast" }[sp];
   radio(zoomSpeedGroup, "zoomSpeed", sp, label, sp === style.zoomSpeed, () => (style.zoomSpeed = sp), `zoomSpeed.${sp}`);
+}
+
+const fadeGroup = $("fade");
+for (const fl of FADE_LENGTHS) {
+  const label = { off: "Off", short: "0.5 s", long: "1 s" }[fl];
+  radio(fadeGroup, "fade", fl, label, fl === style.fade, () => (style.fade = fl), `fade.${fl}`);
+}
+
+function applyFade(fl: FadeLength) {
+  style.fade = fl;
+  fadeGroup.querySelectorAll<HTMLInputElement>("input").forEach((i) => (i.checked = i.value === fl));
 }
 
 function applyZoomSpeed(sp: ZoomSpeed) {
@@ -1961,9 +1975,13 @@ async function styledDraw(): Promise<Draw> {
   const b = { ...bubble };
   const notes = texts.map((n) => ({ ...n }));
   const boxes = masks.map((m) => ({ ...m }));
+  const range = { ...trim };
+  const cutList = cuts.map((c) => ({ ...c }));
+  const speedList = speeds.map((sp) => ({ ...sp }));
   return async (c, frame, frameSize, time) => {
     const f = cam ? await cam.at(time) : null;
     drawFrame(c, frame, frameSize, style, zooms, time, f ? { ...f, bubble: b } : null, notes, boxes);
+    drawFade(c, fadeAlpha(style.fade, range, cutList, speedList, time));
   };
 }
 
@@ -2097,6 +2115,7 @@ function projectData(): ProjectData {
     motionBlur: style.motionBlur,
     clickRipple: style.clickRipple,
     zoomSpeed: style.zoomSpeed,
+    fade: style.fade,
     sound,
     crop: s.crop,
     backdrop: savedBackdrop(),
@@ -2186,6 +2205,7 @@ async function resume() {
   applyMotionBlur(p.motionBlur);
   applyClickRipple(p.clickRipple);
   applyZoomSpeed(p.zoomSpeed);
+  applyFade(p.fade);
   applySound(p.sound);
   restore({ zooms: p.zooms, trim: p.trim, cuts: p.cuts, speeds: p.speeds, texts: p.texts, masks: p.masks, frame: p.frame, crop: p.crop });
   // Re-saving the same Blobs is wasted work: they are already stored.

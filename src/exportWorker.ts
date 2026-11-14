@@ -6,6 +6,7 @@
 import { openCameraFrames, type CameraFrames } from "./cameraFrames";
 import type { FromWorker, ToWorker } from "./exportProtocol";
 import { exportFast, type FastExportJob } from "./fastExport";
+import { drawFade, fadeAlpha } from "./fades";
 import { drawFrame } from "./render";
 
 const scope = self as unknown as {
@@ -44,6 +45,7 @@ scope.onmessage = async (e) => {
       draw: async (ctx, frame, frameSize, time) => {
         const f = cam ? await cam.at(time) : null;
         drawFrame(ctx, frame, frameSize, style, zooms, time, f ? { ...f, bubble } : null, texts, masks);
+        drawFade(ctx, fadeAlpha(style.fade, msg.range, msg.cuts, msg.speeds, time));
       },
       onProgress: (fraction) => scope.postMessage({ type: "progress", fraction }),
     });
